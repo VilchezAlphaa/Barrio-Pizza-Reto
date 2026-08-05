@@ -207,9 +207,9 @@ const DataEngine = (function () {
       const consumo = state.consumoPorSucIng[suc] || {};
       Object.keys(consumo).forEach(ingId => {
         const serie = seriesFor(state, suc, ingId);
-        const consumePromedio = mean(serie);
+        const consumoPromedio = mean(serie);
         const estaEnOrden = Object.prototype.hasOwnProperty.call(pedidos, ingId);
-        if (!estaEnOrden && consumePromedio > 0) {
+        if (!estaEnOrden && consumoPromedio > 0) {
           const cat = state.catalogo[ingId];
           alertas.push({
             sucursal: suc, ingId, nombre: cat ? cat.nombre : ingId,
