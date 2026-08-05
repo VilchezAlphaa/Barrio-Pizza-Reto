@@ -1,0 +1,9 @@
+{
+  "name": "barrio-pizza-dashboard-compras",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dashboard de revisión automática de órdenes de compra — Reto técnico de práctica de IA, Barrio Pizza.",
+  "scripts": {
+    "dev": "vercel dev"
+  }
+}
