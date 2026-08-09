@@ -1,13 +1,13 @@
 // api/chat.mjs
 // Función serverless (Vercel). Corre en el servidor, nunca en el navegador,
-// así que la API key de Google queda segura como variable de entorno.
+// así que la API key de Groq queda segura como variable de entorno.
 //
 // Configúrala en Vercel: Project Settings → Environment Variables
-//   GEMINI_API_KEY = ...
-// (se consigue gratis, sin tarjeta de crédito, en https://aistudio.google.com/apikey)
+//   GROQAPIKEY = ...
+// (se consigue gratis, sin tarjeta de crédito, en https://console.groq.com)
 //
-// Modelo: Gemini 2.5 Flash — disponible en el tier gratuito de Google AI Studio,
-// ideal para un chat que se va a usar muchas veces sin costo.
+// Modelo: llama-3.3-70b-versatile — disponible en el tier gratuito de Groq
+// (14,400 requests/día), rápido y sin costo.
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -19,10 +19,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Falta la pregunta' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQAPIKEY;
   if (!apiKey) {
     return res.status(500).json({
-      error: 'GEMINI_API_KEY no está configurada en el servidor. Agrégala en Vercel → Settings → Environment Variables.',
+      error: 'GROQAPIKEY no está configurada en el servidor. Agrégala en Vercel → Settings → Environment Variables.',
     });
   }
 
@@ -39,28 +39,30 @@ CONTEXTO (JSON con las alertas ya calculadas):
 ${JSON.stringify(contexto)}`;
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: question }] }],
-          generationConfig: { maxOutputTokens: 500 },
-        }),
-      }
-    );
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: question },
+        ],
+        max_tokens: 500,
+      }),
+    });
 
     if (!response.ok) {
       const errText = await response.text();
-      return res.status(502).json({ error: `Error de la API de Gemini: ${errText}` });
+      return res.status(502).json({ error: `Error de la API de Groq: ${errText}` });
     }
 
     const data = await response.json();
-    const answer = (data.candidates || [])
-      .flatMap(c => (c.content && c.content.parts) || [])
-      .map(p => p.text || '')
+    const answer = (data.choices || [])
+      .map(c => (c.message && c.message.content) || '')
       .filter(Boolean)
       .join('\n');
 
