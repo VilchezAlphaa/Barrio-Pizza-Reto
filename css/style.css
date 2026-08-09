@@ -780,3 +780,88 @@ tr.row-flash{animation:rowFlash 1.6s var(--ease-out-expo)}
   padding:.75rem 0;border-bottom:1px dashed rgba(255,255,255,.08);font-size:.85rem;
 }
 .settings-block .settings-row:last-child{border-bottom:none}
+
+/* =========================================================
+   INTRO DE MARCA — preloader + hero con video (estilo barriopizza.com)
+   ========================================================= */
+.dashboard-app{display:none}
+.dashboard-app.is-visible{display:block}
+
+/* ---------- 1) PRELOADER: fondo oscuro + texto animado ---------- */
+.brand-preloader{
+  position:fixed;inset:0;z-index:10001;background:var(--black);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.4rem;
+  transition:opacity .6s var(--ease-out-expo), visibility .6s var(--ease-out-expo);
+}
+.brand-preloader.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
+.preloader-logo{width:56px;height:56px;opacity:0;animation:preloaderLogoIn .6s var(--ease-out-expo) forwards}
+.preloader-text{
+  font-family:var(--font-display);font-weight:400;
+  font-size:clamp(1.6rem,5vw,3rem);letter-spacing:.08em;color:var(--white);
+  display:flex;flex-wrap:wrap;justify-content:center;
+}
+.preloader-text span{
+  display:inline-block;opacity:0;transform:translateY(16px);
+  animation:letterIn .55s var(--ease-out-expo) forwards;
+}
+.preloader-text .gap{width:.6em}
+.preloader-text span:nth-child(1){animation-delay:.15s}
+.preloader-text span:nth-child(2){animation-delay:.20s}
+.preloader-text span:nth-child(3){animation-delay:.25s}
+.preloader-text span:nth-child(4){animation-delay:.30s}
+.preloader-text span:nth-child(5){animation-delay:.35s}
+.preloader-text span:nth-child(6){animation-delay:.40s}
+.preloader-text span:nth-child(8){animation-delay:.50s}
+.preloader-text span:nth-child(9){animation-delay:.55s}
+.preloader-text span:nth-child(10){animation-delay:.60s}
+.preloader-text span:nth-child(11){animation-delay:.65s}
+.preloader-text span:nth-child(12){animation-delay:.70s}
+.preloader-text span:nth-child(13){animation-delay:.75s}
+.preloader-text span:nth-child(14){animation-delay:.80s}
+@keyframes preloaderLogoIn{to{opacity:1}}
+@keyframes letterIn{to{opacity:1;transform:translateY(0)}}
+
+/* ---------- 2) HERO: video de fondo + texto + botón ---------- */
+.brand-hero{
+  position:fixed;inset:0;z-index:10000;overflow:hidden;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .8s var(--ease-out-expo), visibility .8s var(--ease-out-expo);
+}
+.brand-hero.is-visible{opacity:1;visibility:visible;pointer-events:auto}
+.brand-hero.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
+.brand-hero-video{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  background:var(--black); /* respaldo si el video aún no carga o no existe */
+}
+.brand-hero-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(180deg, rgba(35,31,32,.55) 0%, rgba(35,31,32,.35) 40%, rgba(35,31,32,.85) 100%);
+}
+.brand-hero-content{
+  position:relative;z-index:1;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;
+  text-align:center;padding:2rem;
+}
+.brand-hero-title{
+  font-family:var(--font-display);font-weight:400;color:var(--white);
+  font-size:clamp(2.2rem,7vw,4.5rem);letter-spacing:.04em;
+  opacity:0;transform:translateY(14px);animation:letterIn .7s var(--ease-out-expo) .15s forwards;
+}
+.brand-hero-title .word-red{color:var(--red)}
+.brand-hero-sub{
+  font-family:var(--font-mono);font-size:.85rem;letter-spacing:.18em;text-transform:uppercase;
+  color:rgba(255,255,255,.75);
+  opacity:0;transform:translateY(14px);animation:letterIn .7s var(--ease-out-expo) .3s forwards;
+}
+.brand-hero-btn{
+  margin-top:.8rem;padding:.9rem 2.2rem;border-radius:var(--radius);
+  background:var(--red);color:var(--white);border:1px solid var(--red);
+  font-family:var(--font-mono);font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;font-weight:600;
+  cursor:pointer;transition:background .2s, transform .2s, border-color .2s;
+  opacity:0;transform:translateY(14px);animation:letterIn .7s var(--ease-out-expo) .45s forwards;
+}
+.brand-hero-btn:hover{background:var(--red-dark);border-color:var(--red-dark);transform:translateY(10px)}
+
+@media (max-width:640px){
+  .brand-hero-content{padding:1.2rem}
+}

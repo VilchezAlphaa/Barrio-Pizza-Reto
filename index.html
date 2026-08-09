@@ -4,9 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Barrio Pizza · Dashboard de Compras</title>
+<link rel="icon" type="image/svg+xml" href="img/logo-bc.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+<!-- ============ INTRO 1: PRELOADER (texto animado, fondo oscuro) ============ -->
+<div class="brand-preloader" id="brand-preloader">
+  <img src="img/logo-bc.svg" alt="" class="preloader-logo">
+  <h1 class="preloader-text" aria-label="Barrio Compras">
+    <span>B</span><span>A</span><span>R</span><span>R</span><span>I</span><span>O</span>
+    <span class="gap"></span>
+    <span>C</span><span>O</span><span>M</span><span>P</span><span>R</span><span>A</span><span>S</span>
+  </h1>
+</div>
+
+<!-- ============ INTRO 2: HERO CON VIDEO ============ -->
+<div class="brand-hero" id="brand-hero">
+  <video class="brand-hero-video" autoplay muted loop playsinline>
+    <source src="Multimedia/Video-Barrio-PIZZAS.mp4" type="video/mp4">
+  </video>
+  <div class="brand-hero-overlay"></div>
+  <div class="brand-hero-content">
+    <h2 class="brand-hero-title">BARRIO <span class="word-red">COMPRAS</span></h2>
+    <p class="brand-hero-sub">por Alpha Vilchez</p>
+    <button class="brand-hero-btn" id="brand-hero-btn">Entrar a Barrio Compras</button>
+  </div>
+</div>
+
+<div class="dashboard-app" id="dashboard-app">
 
 <div class="loading-screen" id="loading-screen">
   <div class="spinner"></div>
@@ -256,6 +284,8 @@
 
 <div class="footer">Barrio Pizza · Dashboard de Compras — Proyecto de Alpha Vilchez para Pasantía en Barrio Pizza</div>
 
+</div><!-- /#dashboard-app -->
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -264,5 +294,6 @@
 <script src="js/data-engine.js"></script>
 <script src="js/system-manual.js"></script>
 <script src="js/app.js"></script>
+<script src="js/intro.js"></script>
 </body>
 </html>
