@@ -1363,7 +1363,7 @@ function wireChat() {
       });
       const data = await res.json();
       loadingEl.classList.remove('loading');
-      loadingEl.textContent = data.answer || 'No pude generar una respuesta. Intenta de nuevo.';
+      loadingEl.textContent = data.answer || data.error || 'No pude generar una respuesta. Intenta de nuevo.';
     } catch (err) {
       loadingEl.classList.remove('loading');
       loadingEl.textContent = 'Error al conectar con el asistente. Revisa que /api/chat esté desplegado (esto solo funciona una vez publicado en Vercel, no en preview local sin backend).';
