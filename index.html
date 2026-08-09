@@ -13,109 +13,254 @@
   <p class="text-muted" style="font-family:var(--font-mono);font-size:.75rem;letter-spacing:.1em">CARGANDO DATOS...</p>
 </div>
 
-<nav class="nav">
-  <div class="nav-brand"><span class="dot"></span> BARRIO <span class="nav-tag">COMPRAS</span></div>
-  <ul class="nav-links">
-    <li><a href="#alertas" class="active">Alertas</a></li>
-    <li><a href="#tabla">Órdenes</a></li>
-    <li><a href="#proveedores">Proveedores</a></li>
-    <li><a href="#anomalias">Anomalías</a></li>
-    <li><a href="#chat">Chat IA</a></li>
+<!-- ============ TOPBAR: navegación por módulos ============ -->
+<nav class="topbar" id="topbar">
+  <div class="topbar-brand"><span class="dot"></span> BARRIO <span class="nav-tag">COMPRAS</span></div>
+
+  <ul class="topbar-tabs" id="topbar-tabs">
+    <li><button data-module="resumen" class="tab-btn">Resumen</button></li>
+    <li><button data-module="sucursales" class="tab-btn">Sucursales</button></li>
+    <li><button data-module="proveedores" class="tab-btn">Proveedores</button></li>
+    <li><button data-module="informes" class="tab-btn">Informes</button></li>
+    <li><button data-module="anomalias" class="tab-btn">Anomalías</button></li>
+    <li><button data-module="asistente" class="tab-btn">Asistente IA</button></li>
   </ul>
+
+  <button class="hamburger-mobile" id="hamburger-mobile" aria-label="Menú"><span></span><span></span><span></span></button>
 </nav>
 
-<div class="hero-strip">
-  <h1 class="hero-title">Revisión de <span class="word-red">Órdenes de Compra</span></h1>
-  <p class="hero-sub">Proyección de consumo · Detección automática de alertas · 4 sucursales</p>
-</div>
+<div class="mobile-tabs" id="mobile-tabs"></div>
 
-<div class="kpi-row" id="kpi-row"></div>
-
-<div style="padding:0 2rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:.5rem">
-  <div>
-    <span class="panel-sub" style="display:block;margin-bottom:.4rem">Método de proyección</span>
-    <div class="proj-methods" id="method-pills"></div>
-  </div>
-  <div>
-    <span class="panel-sub" style="display:block;margin-bottom:.4rem">Filtrar por sucursal</span>
-    <div class="chip-group" id="sucursal-chips"></div>
-  </div>
-</div>
-
-<div class="main-grid">
-  <div>
-
-    <section class="panel" id="alertas">
-      <div class="panel-header">
-        <span class="panel-title">🔔 Alertas <span class="badge-count" id="alerts-count">0</span></span>
-        <span class="panel-sub">Ordenadas por severidad</span>
-      </div>
-      <div class="alert-list" id="alert-list"></div>
-    </section>
-
-    <section class="panel" id="tabla">
-      <div class="panel-header">
-        <span class="panel-title">📋 Orden de la semana (editable)</span>
-        <span class="panel-sub">Cambia una cantidad y las alertas se recalculan al instante</span>
-      </div>
-      <div class="table-wrap">
-        <table class="orders-table">
-          <thead>
-            <tr>
-              <th></th><th>Sucursal</th><th>Ingrediente</th><th>Proveedor</th>
-              <th>Proyección</th><th>Stock actual</th><th>Necesidad</th>
-              <th>Pedido (formatos)</th><th>Pedido (unidad base)</th>
-            </tr>
-          </thead>
-          <tbody id="orders-tbody"></tbody>
-        </table>
-      </div>
-    </section>
-
+<!-- ============ MÓDULO: RESUMEN (vista por defecto) ============ -->
+<main>
+<section class="module active" data-module="resumen" id="module-resumen">
+  <div class="hero-strip">
+    <h1 class="hero-title">Resumen de <span class="word-red">Órdenes de Compra</span></h1>
+    <p class="hero-sub">Un vistazo rápido — solo lo que necesita tu atención</p>
   </div>
 
-  <div>
+  <div class="status-summary-bar" id="status-summary-bar"></div>
 
-    <section class="panel" id="proveedores">
-      <div class="panel-header">
-        <span class="panel-title">📦 Pedido corregido por proveedor</span>
-      </div>
-      <p class="panel-sub" style="margin-bottom:.8rem">Basado en la necesidad real proyectada (redondeada hacia arriba al formato completo), no en lo que las sucursales pidieron.</p>
-      <div id="providers-container"></div>
-    </section>
+  <div class="kpi-row" id="kpi-row"></div>
 
-    <section class="panel" id="anomalias">
-      <div class="panel-header">
-        <span class="panel-title">📊 Sucursales atípicas</span>
-      </div>
-      <p class="panel-sub" style="margin-bottom:.8rem">Compara cada sucursal contra el resto (no contra su propia proyección).</p>
-      <div id="anomalies-container"></div>
-    </section>
-
-    <section class="panel chat-panel" id="chat">
-      <div class="panel-header">
-        <span class="panel-title">💬 Chat con los datos</span>
-      </div>
-      <div class="chat-suggestions">
-        <button type="button">¿Qué sucursal pide más queso de lo normal?</button>
-        <button type="button">¿Cuáles son las alertas más urgentes?</button>
-        <button type="button">Resume el pedido de Marbella</button>
-      </div>
-      <div class="chat-log" id="chat-log">
-        <div class="chat-msg bot">Pregúntame lo que quieras sobre las órdenes de esta semana — por ejemplo, qué sucursal está en riesgo de quiebre o qué proveedor tiene más pendientes.</div>
-      </div>
-      <form class="chat-input-row" id="chat-form">
-        <input type="text" id="chat-input" placeholder="Escribe tu pregunta..." autocomplete="off" />
-        <button type="submit">Enviar</button>
-      </form>
-    </section>
-
+  <div class="panel" style="margin:0 2rem 1.5rem">
+    <div class="panel-header">
+      <span class="panel-title">Estado por sucursal</span>
+    </div>
+    <div class="branch-status-grid" id="branch-status-grid"></div>
   </div>
-</div>
 
-<div class="footer">Barrio Pizza · Dashboard de Compras — Reto técnico de práctica de IA</div>
+  <div class="panel" style="margin:0 2rem 1.5rem">
+    <div class="panel-header">
+      <span class="panel-title">Lo más urgente</span>
+      <button class="link-btn" id="ver-todas-alertas-btn">Ver todas las alertas →</button>
+    </div>
+    <div class="alert-list" id="top-alert-list"></div>
+  </div>
+</section>
+
+<!-- ============ MÓDULO: SUCURSALES (fusiona Alertas + Órdenes) ============ -->
+<section class="module" data-module="sucursales" id="module-sucursales">
+  <div class="page-header">
+    <h2>Pedido por sucursal <span class="badge-count" id="sucursales-alerts-count">0</span></h2>
+    <p class="text-muted">
+      Entrá a una sucursal a la vez: ahí ves sus alertas clasificadas por severidad y editás el pedido en el
+      mismo lugar. La columna "Pedido" es la cantidad en <b>formatos de compra</b> (ej. sacos, cajas) — editarla
+      simula corregirla, y todo se recalcula al instante (alertas, semáforo, Proveedores, consolidado, Excel/PDF).
+      Haz clic en una fila para ver la tendencia de 6 semanas.
+    </p>
+    <p class="text-muted module-notice">
+      Nota: al corregir un pedido, la fila se recalcula al instante y puede cambiar de grupo —
+      por ejemplo, si quedaba corto y ahora está bien, baja al grupo "Correctas" (colapsado por defecto);
+      si al revés queda corto o de más, sube al grupo que le corresponda. Abre o cierra cada grupo con clic en su título.
+    </p>
+  </div>
+  <div class="toolbar">
+    <div class="toolbar-field">
+      <label for="method-select">Método de proyección <span id="method-help-slot"></span></label>
+      <select id="method-select"></select>
+    </div>
+  </div>
+  <p class="text-muted method-desc" id="method-desc"></p>
+
+  <div class="branch-tabs" id="branch-tabs"></div>
+
+  <div class="branch-layout">
+    <div id="branch-orders-groups"></div>
+
+    <aside class="consolidado-panel">
+      <h3>Pedido consolidado <span id="consolidado-help-slot"></span></h3>
+      <p class="text-muted" style="font-size:.78rem;line-height:1.4">Se va sumando entre las 4 sucursales — así armás el pedido completo sin ir y volver.</p>
+      <div id="consolidado-list"></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ============ MÓDULO: PROVEEDORES ============ -->
+<section class="module" data-module="proveedores" id="module-proveedores">
+  <div class="page-header">
+    <h2>Pedido corregido por proveedor</h2>
+    <p class="text-muted">Basado en la necesidad real proyectada (redondeada hacia arriba al formato completo). Cada ítem muestra cuánto le corresponde a cada sucursal, para que puedas verificar antes de reenviar.</p>
+  </div>
+  <div id="providers-container"></div>
+</section>
+
+<!-- ============ MÓDULO: INFORMES ============ -->
+<section class="module" data-module="informes" id="module-informes">
+  <div class="page-header">
+    <h2>Informes</h2>
+    <p class="text-muted">Control centralizado de pedidos, ajustes hechos por la gerente, historial de consumo y exportaciones — todo en un solo lugar.</p>
+  </div>
+
+  <div class="status-summary-bar" id="informes-summary-bar"></div>
+
+  <div class="panel" style="margin:0 2rem 1.5rem">
+    <div class="panel-header">
+      <span class="panel-title">⬇ Descargar informe<span id="export-help-slot"></span></span>
+      <span class="text-muted" style="font-size:.75rem">Cada pestaña descarga solo esa parte, ya con los filtros que tengas puestos</span>
+    </div>
+
+    <div class="subtabs" id="informes-subtabs">
+      <button class="subtab-btn active" data-subtab="general">General</button>
+      <button class="subtab-btn" data-subtab="ajustes">Ajustes de la gerente</button>
+      <button class="subtab-btn" data-subtab="pedidos">Todos los pedidos</button>
+      <button class="subtab-btn" data-subtab="historico">Historial de consumo</button>
+    </div>
+
+    <div class="subtab-panel active" data-subtab-panel="general">
+      <p class="text-muted">El paquete completo, listo para enviar a los proveedores.</p>
+      <div class="informes-export-row">
+        <button class="btn-mini" id="informes-export-csv">⬇ CSV por proveedor</button>
+        <button class="btn-mini" id="informes-export-excel">Excel (multi-hoja)</button>
+        <button class="btn-mini" id="informes-export-pdf">PDF por proveedor</button>
+      </div>
+    </div>
+
+    <div class="subtab-panel" data-subtab-panel="ajustes">
+      <p class="text-muted">Solo lo que corregiste en "Sucursales" — la bitácora de cambios.</p>
+      <div class="informes-export-row">
+        <button class="btn-mini" id="informes-export-ajustes-csv">⬇ CSV de ajustes</button>
+      </div>
+    </div>
+
+    <div class="subtab-panel" data-subtab-panel="pedidos">
+      <p class="text-muted">La tabla "Todos los pedidos" de abajo, con el filtro de sucursal/proveedor/estado que tengas puesto ahí.</p>
+      <div class="informes-export-row">
+        <button class="btn-mini" id="informes-export-pedidos-csv">⬇ CSV de pedidos filtrados</button>
+      </div>
+    </div>
+
+    <div class="subtab-panel" data-subtab-panel="historico">
+      <p class="text-muted">Consumo real de la semana seleccionada abajo, por sucursal e ingrediente.</p>
+      <div class="informes-export-row">
+        <button class="btn-mini" id="informes-export-historico-csv">⬇ CSV de historial</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin:0 2rem 1.5rem">
+    <div class="panel-header">
+      <span class="panel-title">Ajustes hechos por la gerente <span class="badge-count" id="informes-ediciones-count">0</span></span>
+      <span class="text-muted" style="font-size:.75rem">Diferencia entre lo que pidió cada sucursal y lo que quedó después de tus correcciones en "Sucursales"</span>
+    </div>
+    <div class="table-wrap"><table class="orders-table" id="informes-ediciones-table"></table></div>
+  </div>
+
+  <div class="panel" style="margin:0 2rem 1.5rem">
+    <div class="panel-header">
+      <span class="panel-title">Todos los pedidos</span>
+    </div>
+    <div class="toolbar" style="margin:0 0 1rem">
+      <div class="toolbar-field">
+        <label for="informes-sucursal-select">Sucursal</label>
+        <select id="informes-sucursal-select"></select>
+      </div>
+      <div class="toolbar-field">
+        <label for="informes-proveedor-select">Proveedor</label>
+        <select id="informes-proveedor-select"></select>
+      </div>
+      <div class="toolbar-field">
+        <label for="informes-estado-select">Estado <span id="informes-estado-help-slot"></span></label>
+        <select id="informes-estado-select">
+          <option value="todas">Todos los estados</option>
+          <option value="crit">Se puede quedar sin stock</option>
+          <option value="olvido">Olvidado (no está en la orden)</option>
+          <option value="warn">Sobre-pedido</option>
+          <option value="unknown">No catalogado</option>
+          <option value="ok">Correcto</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap"><table class="orders-table" id="informes-full-table"></table></div>
+  </div>
+
+  <div class="panel" style="margin:0 2rem 1.5rem">
+    <div class="panel-header">
+      <span class="panel-title">Historial de consumo (6 semanas)</span>
+    </div>
+    <div class="toolbar" style="margin:0 0 1rem">
+      <div class="toolbar-field">
+        <label for="informes-semana-select">Semana</label>
+        <select id="informes-semana-select"></select>
+      </div>
+    </div>
+    <div class="table-wrap"><table class="orders-table" id="informes-historico-table"></table></div>
+  </div>
+
+  <div class="panel settings-block" style="margin:0 2rem 1.5rem">
+    <div class="panel-header">
+      <span class="panel-title">Ajustes</span>
+    </div>
+    <div class="settings-row">
+      <span>Reiniciar mis ediciones</span>
+      <button class="btn-mini" id="opt-reset">↺ Reiniciar</button>
+    </div>
+    <div class="settings-row">
+      <span>Acerca de este dashboard</span>
+      <button class="btn-mini" id="opt-about">ℹ Ver</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MÓDULO: ANOMALÍAS ============ -->
+<section class="module" data-module="anomalias" id="module-anomalias">
+  <div class="page-header">
+    <h2>Sucursales atípicas <span id="anomalias-help-slot"></span></h2>
+    <p class="text-muted">Compara cómo pide cada sucursal contra cómo piden las otras 3 (no contra su propia proyección).</p>
+  </div>
+  <div id="anomalies-container"></div>
+</section>
+
+<!-- ============ MÓDULO: ASISTENTE IA ============ -->
+<section class="module" data-module="asistente" id="module-asistente">
+  <div class="page-header">
+    <h2>Asistente de datos</h2>
+    <p class="text-muted">Pregúntale en español normal sobre las órdenes de esta semana</p>
+  </div>
+  <div class="panel chat-panel" style="max-width:700px;margin:0 auto">
+    <div class="chat-suggestions">
+      <button type="button">¿Qué sucursal pide más queso de lo normal?</button>
+      <button type="button">¿Cuáles son las alertas más urgentes?</button>
+      <button type="button">Resume el pedido de Marbella</button>
+    </div>
+    <div class="chat-log" id="chat-log">
+      <div class="chat-msg bot">Pregúntame lo que quieras sobre las órdenes de esta semana — por ejemplo, qué sucursal se puede quedar sin stock o qué proveedor tiene más pendientes.</div>
+    </div>
+    <form class="chat-input-row" id="chat-form">
+      <input type="text" id="chat-input" placeholder="Escribe tu pregunta..." autocomplete="off" />
+      <button type="submit">Enviar</button>
+    </form>
+  </div>
+</section>
+</main>
+
+<div class="footer">Barrio Pizza · Dashboard de Compras — Proyecto de Alpha Vilchez para Pasantía en Barrio Pizza</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 <script src="js/data-engine.js"></script>
 <script src="js/app.js"></script>
 </body>

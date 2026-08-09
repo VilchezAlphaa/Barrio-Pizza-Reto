@@ -2,8 +2,12 @@
   "name": "barrio-pizza-dashboard-compras",
   "version": "1.0.0",
   "private": true,
-  "description": "Dashboard de revisión automática de órdenes de compra — Reto técnico de práctica de IA, Barrio Pizza.",
+  "description": "Dashboard de revisión automática de órdenes de compra — Proyecto de Alpha Vilchez para Pasantía en Barrio Pizza.",
   "scripts": {
     "dev": "vercel dev"
+  },
+  "dependencies": {
+    "jsdom": "^30.0.1",
+    "papaparse": "^5.5.4"
   }
 }

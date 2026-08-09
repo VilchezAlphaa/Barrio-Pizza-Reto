@@ -100,6 +100,28 @@ completo** (en unidad base) se considera redondeo normal, no una alerta.
   una función serverless que protege la API key). El modelo recibe un
   **resumen ya calculado** de las alertas (no los CSVs crudos) — así responde
   rápido, barato, y sin inventar números que no calculamos nosotros mismos.
+- **Gráfico de tendencia por ingrediente**: clic en cualquier fila de la tabla
+  "Órdenes" (con Chart.js) abre un modal con las 6 semanas de consumo real, el
+  punto de proyección recomendado, y una línea de referencia con el stock
+  actual — así se *ve* por qué el sistema proyectó lo que proyectó.
+- **Acción sugerida en cada alerta**: cada alerta no solo dice *qué* está mal
+  (`js/data-engine.js → accionSugerida()`), sino qué hacer al respecto —
+  cuántos formatos más pedir, si conviene bajar la cantidad, o verificar un
+  ingrediente no catalogado. Se calcula una sola vez en el motor y se reutiliza
+  en las tarjetas, la tabla, el Excel y el PDF, para que nunca queden
+  desalineados.
+- **Exportación a Excel multi-hoja** (SheetJS): además del CSV plano, se puede
+  exportar un `.xlsx` con una hoja de resumen, una hoja con todas las alertas
+  (motivo + acción sugerida), y **una hoja por proveedor** — lista para
+  reenviar sin editar nada.
+- **Exportación a PDF por proveedor** (jsPDF + autoTable): genera un PDF con
+  la identidad visual de Barrio Pizza (un bloque encabezado por proveedor),
+  listo para imprimir o mandar por WhatsApp/email sin depender de la función
+  "Guardar como PDF" del navegador.
+- **Barra de resumen compacta**: chips de un vistazo (correctas / sobre-pedido
+  / sin stock / olvidos / no catalogados) arriba del módulo Resumen, con los
+  mismos números que las tarjetas KPI de abajo — pensado para el primer
+  segundo de atención de la gerente.
 
 ---
 

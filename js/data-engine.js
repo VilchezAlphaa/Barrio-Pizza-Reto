@@ -152,6 +152,7 @@ const DataEngine = (function () {
     const stock = ((state.inventario[sucursal] || {})[ingId]) ?? 0;
     const necesidad = proyeccion - stock; // puede ser negativo (ya cubierto)
 
+    const enOrden = Object.prototype.hasOwnProperty.call(state.ordenes[sucursal] || {}, ingId);
     const cantidadFormatos = ((state.ordenes[sucursal] || {})[ingId]);
     const pedido = typeof cantidadFormatos === 'number' && !isNaN(cantidadFormatos) ? cantidadFormatos : 0;
 
@@ -161,7 +162,7 @@ const DataEngine = (function () {
         sucursal, ingId, nombre: ingId, proveedor: null, unidad: null,
         proyeccion, stock, necesidad, pedido, pedidoBase: null,
         diferencia: null, status: 'unknown', perecedero: false,
-        motivo: 'no_catalogado',
+        motivo: 'no_catalogado', enOrden,
       };
     }
 
@@ -178,7 +179,7 @@ const DataEngine = (function () {
       sucursal, ingId, nombre: cat.nombre, proveedor: cat.proveedor, unidad: cat.unidad_base,
       formato: cat.formato_compra, factor: cat.factor,
       proyeccion, stock, necesidad, pedido, pedidoBase, diferencia, status, motivo,
-      perecedero: cat.perecedero,
+      perecedero: cat.perecedero, enOrden,
     };
   }
 
@@ -270,26 +271,52 @@ const DataEngine = (function () {
   }
 
   // ---------- Pedido corregido agrupado por proveedor ----------
-
+  //
+  // Importante: esto SÍ depende de lo que quedó en state.ordenes (incluyendo las
+  // ediciones en vivo que hace la gerente en el módulo "Órdenes"). La regla es:
+  //   - Si la sucursal SÍ tiene el ingrediente en su orden: se manda lo que quedó
+  //     en esa orden (ya editada/corregida), pero nunca menos de la necesidad real
+  //     proyectada (así, si la gerente corrige un pedido bajo hasta que la fila se
+  //     ponga "ok", el proveedor recibe exactamente esa cantidad corregida).
+  //   - Si la sucursal NUNCA puso el ingrediente en su orden (posible olvido) pero
+  //     sí lo consume normalmente: se recomienda la necesidad real proyectada,
+  //     porque no hay ningún pedido del que partir.
+  //   - Los ingredientes no catalogados se excluyen (no hay proveedor ni factor de
+  //     conversión con el que armar una cantidad a comprar).
   function pedidoCorregidoPorProveedor(state, metodo) {
     const porProveedor = {};
     state.sucursales.forEach(suc => {
-      Object.keys(state.catalogo).forEach(ingId => {
+      const idsPedidos = new Set(Object.keys(state.ordenes[suc] || {}));
+      const idsConsumidos = new Set(Object.keys(state.consumoPorSucIng[suc] || {}));
+      const idsTotales = new Set([...idsPedidos, ...idsConsumidos]);
+
+      idsTotales.forEach(ingId => {
         const cat = state.catalogo[ingId];
+        if (!cat) return; // no catalogado: no se puede convertir ni asignar a un proveedor
+
         const proy = proyeccionesPara(state, suc, ingId);
         const proyeccion = proy[metodo] ?? proy.recomendada;
         const stock = ((state.inventario[suc] || {})[ingId]) ?? 0;
         const necesidad = proyeccion - stock;
-        if (necesidad <= 0) return;
-        const formatosRecomendados = Math.ceil(necesidad / cat.factor);
-        if (formatosRecomendados <= 0) return;
+        const formatosNecesarios = necesidad > 0 ? Math.ceil(necesidad / cat.factor) : 0;
+
+        const enOrden = idsPedidos.has(ingId);
+        let formatosAComprar;
+        if (!enOrden) {
+          formatosAComprar = formatosNecesarios;
+        } else {
+          const cantidadFormatos = Number((state.ordenes[suc] || {})[ingId]);
+          const formatosPedidos = !isNaN(cantidadFormatos) && cantidadFormatos > 0 ? cantidadFormatos : 0;
+          formatosAComprar = Math.max(formatosPedidos, formatosNecesarios);
+        }
+        if (formatosAComprar <= 0) return;
 
         porProveedor[cat.proveedor] = porProveedor[cat.proveedor] || {};
         porProveedor[cat.proveedor][ingId] = porProveedor[cat.proveedor][ingId] || {
           nombre: cat.nombre, formato: cat.formato_compra, total: 0, detalle: [],
         };
-        porProveedor[cat.proveedor][ingId].total += formatosRecomendados;
-        porProveedor[cat.proveedor][ingId].detalle.push({ sucursal: suc, formatos: formatosRecomendados });
+        porProveedor[cat.proveedor][ingId].total += formatosAComprar;
+        porProveedor[cat.proveedor][ingId].detalle.push({ sucursal: suc, formatos: formatosAComprar });
       });
     });
     return porProveedor;
@@ -304,7 +331,7 @@ const DataEngine = (function () {
 
     return {
       metodo_proyeccion: metodo,
-      alertas_bajo_pedido: filas.filter(f => f.status === 'crit').map(f => ({
+      alertas_bajo_pedido: filas.filter(f => f.status === 'crit' && f.enOrden !== false).map(f => ({
         sucursal: f.sucursal, ingrediente: f.nombre, proyeccion: round2(f.proyeccion),
         pedido_base: round2(f.pedidoBase), necesidad: round2(f.necesidad), unidad: f.unidad,
       })),
@@ -329,9 +356,45 @@ const DataEngine = (function () {
 
   function round2(n) { return typeof n === 'number' ? Math.round(n * 100) / 100 : n; }
 
+  // ---------- Acción sugerida (misma lógica para tarjetas, tabla, PDF, Excel y chat) ----------
+
+  function accionSugerida(f) {
+    if (!f) return '';
+    if (f.status === 'unknown') {
+      return 'Verificar con la sucursal qué producto es y agregarlo al catálogo.';
+    }
+    if (f.status === 'crit') {
+      const formatosFaltantes = f.factor ? Math.ceil(Math.abs(f.diferencia) / f.factor) : null;
+      const destino = f.proveedor ? ` a ${f.proveedor}` : '';
+      return formatosFaltantes
+        ? `Pedir ${formatosFaltantes} ${formatosFaltantes === 1 ? 'unidad más' : 'unidades más'} de "${f.formato}"${destino} antes de cerrar la orden.`
+        : `Aumentar la cantidad pedida${destino} antes de cerrar la orden.`;
+    }
+    if (f.status === 'warn') {
+      return f.perecedero
+        ? 'Reducir la cantidad — al vencer rápido, el excedente probablemente se daña.'
+        : 'Confirmar con la sucursal si el excedente se puede quedar en inventario o conviene bajar el pedido.';
+    }
+    return 'Ninguna — el pedido está bien ajustado a lo proyectado.';
+  }
+
+  function accionSugeridaOlvido(o) {
+    const destino = o && o.proveedor ? ` (proveedor: ${o.proveedor})` : '';
+    return `Confirmar con la sucursal si fue un olvido y agregarlo a la orden antes de enviarla${destino}.`;
+  }
+
+  const DESCRIPCION_METODOS = {
+    promedio: 'Saca el promedio de las 6 semanas tal cual. Simple, pero si el consumo viene subiendo o bajando, no lo detecta.',
+    regresion: 'Traza la tendencia de las 6 semanas y proyecta hacia dónde va. Útil si una sucursal está creciendo o cayendo en ventas.',
+    robusta: 'Ignora semanas raras (una fiesta, un feriado) antes de promediar, para que un solo día extraño no distorsione la proyección.',
+    recomendada: 'Combina la tendencia (regresión) con la resistencia a semanas raras (robusta). Es la que usamos por defecto para la mayoría de los casos.',
+  };
+  function descripcionMetodo(key) { return DESCRIPCION_METODOS[key] || ''; }
+
   return {
     loadAll, build, proyeccionesPara, evaluarFila, todasLasFilas,
     alertasOlvido, anomaliasEntreSucursales, pedidoCorregidoPorProveedor,
-    resumenParaChat, seriesFor, WEEK_ORDER,
+    resumenParaChat, seriesFor, WEEK_ORDER, accionSugerida, accionSugeridaOlvido,
+    descripcionMetodo,
   };
 })();
