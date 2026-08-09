@@ -518,7 +518,7 @@ function mostrarAcercaDe() {
       <button class="about-modal-close" id="about-modal-close">&times;</button>
       <h3>Acerca de este dashboard</h3>
       <p>Revisa automáticamente las órdenes de compra semanales de 4 sucursales de Barrio Pizza, proyecta el consumo con 4 métodos distintos, y genera alertas cuando una sucursal pide de más, de menos, o se olvida de algo.</p>
-      <p class="text-muted" style="margin-top:.8rem">Proyecto de Alpha Vilchez para Pasantía en Barrio Pizza — construido con HTML/CSS/JS y Claude Haiku 4.5 para el asistente de datos.</p>
+      <p class="text-muted" style="margin-top:.8rem">Proyecto de Alpha Vilchez para Pasantía en Barrio Pizza — construido con HTML/CSS/JS y Gemini 2.5 Flash para el asistente de datos.</p>
     </div>
   `;
   document.body.appendChild(modal);

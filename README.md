@@ -35,7 +35,7 @@ Luego abre `http://localhost:5500`.
 1. Sube esta carpeta a un repo de GitHub.
 2. Entra a [vercel.com](https://vercel.com), conecta tu GitHub, importa el repo.
 3. En **Settings → Environment Variables**, agrega:
-   - `ANTHROPIC_API_KEY` = tu API key de [console.anthropic.com](https://console.anthropic.com)
+   - `GEMINI_API_KEY` = tu API key gratuita de [Google AI Studio](https://aistudio.google.com/apikey) (sin tarjeta de crédito)
 4. Deploy. Vercel detecta `api/chat.mjs` automáticamente como función serverless.
 5. Prueba el link en una ventana de incógnito antes de entregarlo.
 
@@ -96,10 +96,11 @@ completo** (en unidad base) se considera redondeo normal, no una alerta.
   editables — cambia una cantidad y las alertas, KPIs y proveedores se
   recalculan al instante, sin recargar la página. Es el primer paso hacia la
   visión de "cargar todas las órdenes y ver las alertas al instante".
-- **Chat con los datos**: cuadro de texto conectado a Claude Haiku 4.5 (vía
-  una función serverless que protege la API key). El modelo recibe un
-  **resumen ya calculado** de las alertas (no los CSVs crudos) — así responde
-  rápido, barato, y sin inventar números que no calculamos nosotros mismos.
+- **Chat con los datos**: cuadro de texto conectado a Gemini 2.5 Flash (vía
+  una función serverless que protege la API key), usando el tier gratuito de
+  Google AI Studio. El modelo recibe un **resumen ya calculado** de las
+  alertas (no los CSVs crudos) — así responde rápido y sin inventar números
+  que no calculamos nosotros mismos.
 - **Gráfico de tendencia por ingrediente**: clic en cualquier fila de la tabla
   "Órdenes" (con Chart.js) abre un modal con las 6 semanas de consumo real, el
   punto de proyección recomendado, y una línea de referencia con el stock
@@ -162,9 +163,9 @@ Usé **Claude** (Anthropic) durante todo el desarrollo:
   script de prueba en Node que replica las funciones clave contra los CSVs
   reales y confirmé que los números tienen sentido (4 alertas críticas, 5 de
   sobre-pedido, 1 no catalogado con el método de regresión).
-- Para **integrar el chat con la API de Claude** (Haiku 4.5, elegido por ser
-  el modelo más económico/rápido de la familia — relevante porque esta
-  herramienta se usaría muchas veces por semana).
+- Para **integrar el chat con la API de Gemini** (2.5 Flash, elegido por su
+  tier gratuito sin tarjeta de crédito — relevante porque esta herramienta
+  se usaría muchas veces por semana sin generar costo).
 - El diseño visual (paleta, tipografía, layout) está **inspirado en la
   identidad de marca de Barrio Pizza** (mismo rojo `#CF2F2C` y negro
   `#231F20` de su sitio web), pero usando fuentes de Google Fonts libres de
@@ -207,7 +208,7 @@ Usé **Claude** (Anthropic) durante todo el desarrollo:
 ├── js/data-engine.js         # toda la lógica de negocio (proyección, alertas, anomalías)
 ├── js/app.js                 # renderizado de la interfaz y eventos
 ├── data/*.csv                 # los 4 archivos de datos
-├── api/chat.mjs                # función serverless — chat con Claude Haiku 4.5
+├── api/chat.mjs                # función serverless — chat con Gemini 2.5 Flash
 ├── package.json
 └── vercel.json
 ```
