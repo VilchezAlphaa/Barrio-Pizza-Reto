@@ -323,30 +323,83 @@ const DataEngine = (function () {
   }
 
   // ---------- Resumen para el chat (contexto compacto, no CSVs crudos) ----------
-
+  //
+  // Diseño: el chat recibe TODO lo que el sistema ya calculó — no solo alertas —
+  // para poder responder cualquier pregunta sobre esta semana, no solo las que
+  // anticipamos. Sigue sin recibir los CSVs crudos a propósito: si le mandáramos
+  // las 528 filas de consumo sin procesar, el modelo tendría que sumar/promediar
+  // él mismo, y eso es justo lo que queremos evitar (los cálculos ya están hechos
+  // y verificados en JS; el modelo solo redacta). "Todo" significa todo lo
+  // CALCULADO, no todo lo CRUDO.
+  //
+  // Límite real a tener en cuenta: la capa gratuita de Groq tiene un tope de
+  // tokens por minuto bastante ajustado (varía por modelo, unos miles de tokens).
+  // Como la API no tiene memoria entre preguntas, este bloque completo se manda
+  // de nuevo en CADA pregunta del chat. Por eso se usa un formato compacto (sin
+  // campos internos como "factor" o "motivo") en vez de mandar los objetos
+  // completos tal cual los usa la UI.
   function resumenParaChat(state, metodo) {
-    const filas = todasLasFilas(state, metodo).filter(f => f.status !== 'ok' || f.motivo);
+    const filas = todasLasFilas(state, metodo).filter(f => f.status !== 'unknown');
+    const noCatalogados = todasLasFilas(state, metodo).filter(f => f.status === 'unknown');
     const olvidos = alertasOlvido(state);
     const anomalias = anomaliasEntreSucursales(state, metodo);
 
+    const catalogo_ingredientes = Object.values(state.catalogo || {}).map(c => ({
+      ingrediente: c.nombre, proveedor: c.proveedor, unidad: c.unidad_base,
+      formato_compra: c.formato_compra, perecedero: c.perecedero,
+    }));
+    const proveedores = [...new Set(catalogo_ingredientes.map(c => c.proveedor).filter(Boolean))];
+
+    // Pedido de ESTA semana agrupado por proveedor (misma lógica que el módulo
+    // "Proveedores"), para que el chat pueda responder "¿a qué proveedor le estoy
+    // pidiendo más?" — distinto de historial de compras pasadas, que no se guarda.
+    const porProveedorRaw = pedidoCorregidoPorProveedor(state, metodo);
+    const pedido_actual_por_proveedor = Object.entries(porProveedorRaw).map(([proveedor, items]) => {
+      const lineas = Object.values(items);
+      return {
+        proveedor,
+        items_distintos: lineas.length,
+        total_formatos_pedidos: lineas.reduce((sum, it) => sum + it.total, 0),
+      };
+    }).sort((a, b) => b.total_formatos_pedidos - a.total_formatos_pedidos);
+
+    // TODAS las combinaciones sucursal-ingrediente catalogadas (incluidas las que
+    // están "ok"), como tabla de texto agrupada por ingrediente en vez de JSON:
+    // el mismo contenido en JSON ocupa ~3.6x más tokens porque repite los nombres
+    // de cada campo en cada una de las ~90 filas. En texto plano, el modelo lo
+    // interpreta igual de bien con una fracción del costo — importante porque la
+    // capa gratuita de Groq tiene un tope de tokens por minuto y este bloque se
+    // manda completo en CADA pregunta del chat (la API no tiene memoria propia).
+    const porIngrediente = {};
+    filas.forEach(f => {
+      porIngrediente[f.nombre] = porIngrediente[f.nombre] || { proveedor: f.proveedor, unidad: f.unidad, lineas: [] };
+      let linea = `${f.sucursal}: ${f.status}, proyección=${round2(f.proyeccion)}, stock=${round2(f.stock)}, pedido=${round2(f.pedidoBase)}, necesidad=${round2(f.necesidad)}`;
+      if (f.status !== 'ok') linea += ` → ${accionSugerida(f)}`;
+      porIngrediente[f.nombre].lineas.push(linea);
+    });
+    let tabla_pedidos_detalle = '';
+    Object.entries(porIngrediente).forEach(([nombre, d]) => {
+      tabla_pedidos_detalle += `${nombre} [proveedor: ${d.proveedor}, unidad: ${d.unidad}]\n`;
+      d.lineas.forEach(l => { tabla_pedidos_detalle += `  ${l}\n`; });
+    });
+
     return {
       metodo_proyeccion: metodo,
-      alertas_bajo_pedido: filas.filter(f => f.status === 'crit' && f.enOrden !== false).map(f => ({
-        sucursal: f.sucursal, ingrediente: f.nombre, proyeccion: round2(f.proyeccion),
-        pedido_base: round2(f.pedidoBase), necesidad: round2(f.necesidad), unidad: f.unidad,
-      })),
-      alertas_sobre_pedido: filas.filter(f => f.status === 'warn').map(f => ({
-        sucursal: f.sucursal, ingrediente: f.nombre, proyeccion: round2(f.proyeccion),
-        pedido_base: round2(f.pedidoBase), necesidad: round2(f.necesidad), unidad: f.unidad,
-        perecedero: f.perecedero,
-      })),
-      ingredientes_no_catalogados: filas.filter(f => f.status === 'unknown').map(f => ({
+      proveedores,
+      catalogo_ingredientes,
+      pedido_actual_por_proveedor,
+      // Tabla con TODOS los pedidos de esta semana (unidad-base, no formatos de
+      // compra), agrupada por ingrediente. "estado" es ok / crit (falta stock) /
+      // warn (sobra). Incluye la acción sugerida cuando no está "ok".
+      tabla_pedidos_detalle,
+      ingredientes_no_catalogados: noCatalogados.map(f => ({
         sucursal: f.sucursal, ingrediente_id: f.ingId,
       })),
       ingredientes_olvidados: olvidos.map(o => ({
-        sucursal: o.sucursal, ingrediente: o.nombre, consumo_promedio_semanal: round2(o.consumoPromedio),
+        sucursal: o.sucursal, ingrediente: o.nombre, proveedor: o.proveedor, consumo_promedio_semanal: round2(o.consumoPromedio),
+        accion_sugerida: accionSugeridaOlvido(o),
       })),
-      anomalias_entre_sucursales: anomalias.slice(0, 15).map(a => ({
+      anomalias_entre_sucursales: anomalias.map(a => ({
         sucursal: a.sucursal, ingrediente: a.nombre,
         ratio_pedido_vs_proyeccion: round2(a.ratio),
         promedio_resto_de_sucursales: round2(a.promedioResto),

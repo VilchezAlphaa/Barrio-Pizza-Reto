@@ -1359,7 +1359,9 @@ function wireChat() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, contexto }),
+        // manual: texto fijo (js/system-manual.js) que describe módulos y botones,
+        // para que el chat también pueda responder "cómo hago X en la página".
+        body: JSON.stringify({ question, contexto, manual: SYSTEM_MANUAL }),
       });
       const data = await res.json();
       loadingEl.classList.remove('loading');

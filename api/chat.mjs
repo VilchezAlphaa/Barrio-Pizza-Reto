@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  const { question, contexto } = req.body || {};
+  const { question, contexto, manual } = req.body || {};
   if (!question || typeof question !== 'string') {
     return res.status(400).json({ error: 'Falta la pregunta' });
   }
@@ -31,11 +31,19 @@ export default async function handler(req, res) {
   // que hacer los cálculos él mismo (los cálculos ya están hechos y verificados
   // en JavaScript; el modelo solo tiene que explicarlos en palabras).
   const systemPrompt = `Eres un asistente para la gerente de compras de Barrio Pizza, una cadena de pizzerías en Panamá.
-Tienes acceso a un resumen YA CALCULADO de las alertas de la orden de compra de esta semana (no inventes números que no estén en el contexto).
+Tienes acceso a "tabla_pedidos_detalle": TODO el pedido de esta semana, sucursal por sucursal e ingrediente por ingrediente (incluidos los que están bien, no solo los problemáticos), más el catálogo completo de proveedores y el manual del dashboard. No inventes números, proveedores ni datos que no estén en el contexto — si algo no aparece ahí, no existe en el sistema.
 Responde en español, de forma breve, clara y accionable — como si hablaras con alguien que no tiene tiempo de leer tablas.
-Si la pregunta no se puede responder con los datos del contexto, dilo honestamente.
 
-CONTEXTO (JSON con las alertas ya calculadas):
+Cómo leer "tabla_pedidos_detalle": está agrupada por ingrediente, con una línea por sucursal. "estado" es ok / crit (falta stock) / warn (sobra). Cuando no está "ok", la línea ya trae la acción recomendada después de "→" — usa esa acción tal cual, no improvises una distinta.
+Distingue bien estos dos casos, que son opuestos:
+- estado "crit" (falta stock): hay que AUMENTAR el pedido a ese proveedor. Flujo en la página: ir a Sucursales → esa sucursal → subir la cantidad en "Pedido" para ese ingrediente (se recalcula todo al instante) → verificar el nuevo total en el módulo Proveedores → usar el botón "📋 Copiar" de ese proveedor (para WhatsApp/correo) o exportar el PDF/Excel desde Informes → General para mandárselo formalmente.
+- estado "warn" (exceso): hay que REDUCIR el pedido, no pedir más. Flujo en la página: ir a Sucursales → esa sucursal → bajar la cantidad en "Pedido" para ese ingrediente. Si es perecedero, la urgencia es mayor (se puede dañar el excedente).
+"pedido_actual_por_proveedor" es el pedido de ESTA semana (formatos totales, de mayor a menor) — úsalo para "¿a qué proveedor le estoy pidiendo más?". NO tienes historial de compras de semanas anteriores (el sistema no lo guarda); si preguntan por compras pasadas o tendencias de varias semanas, dilo honestamente.
+Si preguntan cómo hacer algo en la página, usa el manual para decir en qué módulo y botón está. Si la pregunta (de datos o de interfaz) no se puede responder con lo que tienes, dilo honestamente en vez de inventar.
+
+${manual || ''}
+
+CONTEXTO (todo lo calculado esta semana — pedidos, proveedores, catálogo):
 ${JSON.stringify(contexto)}`;
 
   try {
@@ -51,12 +59,17 @@ ${JSON.stringify(contexto)}`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: question },
         ],
-        max_tokens: 500,
+        max_tokens: 320,
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
+      if (response.status === 429) {
+        return res.status(429).json({
+          error: 'El asistente está saturado por el momento (límite de la capa gratuita de Groq). Espera unos segundos y vuelve a intentar.',
+        });
+      }
       return res.status(502).json({ error: `Error de la API de Groq: ${errText}` });
     }
 
