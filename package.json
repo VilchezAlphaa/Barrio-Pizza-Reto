@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "Dashboard de revisión automática de órdenes de compra — Proyecto de Alpha Vilchez para Pasantía en Barrio Pizza.",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "vercel dev"
   },

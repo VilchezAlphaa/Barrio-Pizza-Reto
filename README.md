@@ -36,7 +36,7 @@ Luego abre `http://localhost:5500`.
 2. Entra a [vercel.com](https://vercel.com), conecta tu GitHub, importa el repo.
 3. En **Settings → Environment Variables**, agrega:
    - `ANTHROPIC_API_KEY` = tu API key de [console.anthropic.com](https://console.anthropic.com)
-4. Deploy. Vercel detecta `api/chat.js` automáticamente como función serverless.
+4. Deploy. Vercel detecta `api/chat.mjs` automáticamente como función serverless.
 5. Prueba el link en una ventana de incógnito antes de entregarlo.
 
 Para probar la función localmente antes de subir: `npx vercel dev` (requiere
@@ -207,7 +207,7 @@ Usé **Claude** (Anthropic) durante todo el desarrollo:
 ├── js/data-engine.js         # toda la lógica de negocio (proyección, alertas, anomalías)
 ├── js/app.js                 # renderizado de la interfaz y eventos
 ├── data/*.csv                 # los 4 archivos de datos
-├── api/chat.js                # función serverless — chat con Claude Haiku 4.5
+├── api/chat.mjs                # función serverless — chat con Claude Haiku 4.5
 ├── package.json
 └── vercel.json
 ```
