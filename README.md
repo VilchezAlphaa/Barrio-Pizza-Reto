@@ -3,7 +3,7 @@
 Dashboard que revisa automáticamente las órdenes de compra semanales de 4 sucursales,
 proyecta el consumo, y genera alertas accionables para la gerente de compras.
 
-**Demo en vivo:** _(pega aquí tu URL de Vercel una vez publicado)_
+**Demo en vivo:** [barrio-pizza-reto-phi.vercel.app](https://barrio-pizza-reto-phi.vercel.app/)
 
 ---
 
@@ -25,6 +25,91 @@ npx serve .
 
 Luego abre `http://localhost:5500`.
 
+---
+
+## Arquitectura
+
+El proyecto está pensado como **estático + una sola función serverless**, sin
+backend propio ni base de datos — a propósito, porque el alcance real del
+problema (4 sucursales, 22 ingredientes, datos que se cargan una vez por
+semana) no justifica mantener un servidor corriendo.
+
+```
+Navegador (HTML/CSS/JS puro)
+  │
+  ├─ Papa Parse → lee los 4 CSVs de /data al cargar la página
+  │
+  ├─ js/data-engine.js  → TODA la lógica de negocio vive acá, aislada de la UI:
+  │     proyección de consumo, conversión de unidades, generación de alertas,
+  │     detección de anomalías, agrupación por proveedor. No toca el DOM.
+  │
+  ├─ js/app.js  → renderizado de la interfaz + eventos. Le pide los números
+  │     ya calculados a data-engine.js y solo se encarga de pintar tarjetas,
+  │     tablas, gráficos (Chart.js), exports (SheetJS, jsPDF) y de manejar los
+  │     inputs editables (recalcula todo en vivo, sin recargar la página).
+  │
+  └─ Chat (módulo "Asistente IA") → arma un resumen ya calculado
+        (DataEngine.resumenParaChat) y lo manda por fetch() a...
+              │
+              ▼
+        api/chat.mjs  (función serverless de Vercel, corre en el servidor)
+              │
+              ├─ Es la única pieza que no corre en el navegador — así la
+              │   API key de Groq nunca queda expuesta en el cliente.
+              ├─ Arma el system prompt (instrucciones + manual del dashboard
+              │   + el resumen de datos) y llama a la API de Groq.
+              └─ Devuelve la respuesta en texto plano al navegador.
+```
+
+**Por qué separar `data-engine.js` de `app.js`**: la lógica de negocio (¿esto
+es una alerta crítica o no? ¿cuánto hay que pedirle a cada proveedor?) es la
+parte que de verdad importa que esté bien probada y sea fácil de leer sin
+ruido de DOM. Esa separación también es la que permite reutilizar exactamente
+los mismos cálculos en 5 lugares distintos sin duplicar lógica: las tarjetas
+de alerta, la tabla de "Órdenes", el Excel, el PDF y el resumen que recibe el
+chat, todos llaman a las mismas funciones de `data-engine.js` — así nunca
+quedan desalineados entre sí (por ejemplo, la "acción sugerida" de una alerta
+es exactamente la misma línea de texto en la tarjeta, en el PDF y en lo que
+lee el chat, porque sale de una sola función: `accionSugerida()`).
+
+**Por qué el chat necesita su propia función serverless** y no llama a Groq
+directo desde el navegador: cualquier API key puesta en JS del lado del
+cliente queda visible para cualquiera que abra las herramientas de
+desarrollador — así que `api/chat.mjs` corre del lado del servidor
+específicamente para que `GROQAPIKEY` nunca viaje al navegador. El resto del
+dashboard no necesita esto porque no llama a ninguna API externa con
+credenciales — todo lo demás (CSVs, cálculos, exports) corre 100% en el
+cliente.
+
+**Por qué el chat recibe un resumen ya calculado y no los CSVs crudos**: si
+le mandáramos las ~528 filas de consumo histórico sin procesar, el modelo
+tendría que sumar y promediar él mismo para responder — y ahí es exactamente
+donde un LLM falla más (aritmética sobre muchos números). En cambio,
+`resumenParaChat()` arma un JSON compacto con los cálculos que
+`data-engine.js` ya hizo y verificó — el modelo solo tiene que leerlos y
+redactar la respuesta, nunca calcular nada.
+
+**Por qué el dashboard está separado en módulos** (Resumen, Sucursales,
+Proveedores, Informes, Anomalías, Asistente IA) en vez de una sola pantalla:
+el volumen de datos es alto — hasta 88 combinaciones sucursal-ingrediente por
+semana — y mostrarlo todo junto le habría quitado usabilidad a quien
+realmente usa esto día a día. Cada módulo responde una pregunta distinta en
+un momento distinto del proceso de la gerente:
+- **Resumen** — "¿hay algo crítico ahora mismo?" (KPIs, semáforo, urgencias,
+  sin tener que entrar sucursal por sucursal).
+- **Sucursales** — el trabajo pesado de revisar y corregir pedidos; necesita
+  su propio espacio porque es donde se pasa más tiempo.
+- **Proveedores** — "¿a quién le compro y cuánto?", una pregunta distinta a
+  "¿qué le pasa a esta sucursal?", así que vive aparte.
+- **Anomalías** — compara una sucursal contra el promedio de las otras 3, una
+  lógica distinta a la de Sucursales (que compara cada sucursal contra su
+  propia proyección) — mezclarlas hubiera confundido ambas comparaciones.
+- **Informes** — centraliza todas las exportaciones en un solo lugar, para no
+  tener que buscar el botón de descarga módulo por módulo.
+
+La idea general fue que cada pantalla resuelva una sola pregunta, para que el
+dashboard no se sienta como una hoja de cálculo con botones encima.
+
 > ⚠️ El chat con IA (`/api/chat`) es una función serverless de Vercel y **no
 > funciona en este modo local simple** — necesitas `vercel dev` (ver abajo) o
 > publicarlo en Vercel. El resto del dashboard (alertas, tabla, proveedores,
@@ -35,7 +120,7 @@ Luego abre `http://localhost:5500`.
 1. Sube esta carpeta a un repo de GitHub.
 2. Entra a [vercel.com](https://vercel.com), conecta tu GitHub, importa el repo.
 3. En **Settings → Environment Variables**, agrega:
-   - `GEMINI_API_KEY` = tu API key gratuita de [Google AI Studio](https://aistudio.google.com/apikey) (sin tarjeta de crédito)
+   - `GROQAPIKEY` = tu API key gratuita de [Groq Console](https://console.groq.com) (sin tarjeta de crédito)
 4. Deploy. Vercel detecta `api/chat.mjs` automáticamente como función serverless.
 5. Prueba el link en una ventana de incógnito antes de entregarlo.
 
@@ -96,11 +181,12 @@ completo** (en unidad base) se considera redondeo normal, no una alerta.
   editables — cambia una cantidad y las alertas, KPIs y proveedores se
   recalculan al instante, sin recargar la página. Es el primer paso hacia la
   visión de "cargar todas las órdenes y ver las alertas al instante".
-- **Chat con los datos**: cuadro de texto conectado a Gemini 2.5 Flash (vía
-  una función serverless que protege la API key), usando el tier gratuito de
-  Google AI Studio. El modelo recibe un **resumen ya calculado** de las
-  alertas (no los CSVs crudos) — así responde rápido y sin inventar números
-  que no calculamos nosotros mismos.
+- **Chat con los datos**: cuadro de texto conectado a Groq
+  (`llama-3.3-70b-versatile`, vía una función serverless que protege la API
+  key), usando el tier gratuito de Groq (14,400 requests/día, sin tarjeta de
+  crédito). El modelo recibe un **resumen ya calculado** de las alertas (no
+  los CSVs crudos) — así responde rápido y sin inventar números que no
+  calculamos nosotros mismos.
 - **Gráfico de tendencia por ingrediente**: clic en cualquier fila de la tabla
   "Órdenes" (con Chart.js) abre un modal con las 6 semanas de consumo real, el
   punto de proyección recomendado, y una línea de referencia con el stock
@@ -163,9 +249,12 @@ Usé **Claude** (Anthropic) durante todo el desarrollo:
   script de prueba en Node que replica las funciones clave contra los CSVs
   reales y confirmé que los números tienen sentido (4 alertas críticas, 5 de
   sobre-pedido, 1 no catalogado con el método de regresión).
-- Para **integrar el chat con la API de Gemini** (2.5 Flash, elegido por su
-  tier gratuito sin tarjeta de crédito — relevante porque esta herramienta
-  se usaría muchas veces por semana sin generar costo).
+- Para **integrar el chat con la API de Groq** (`llama-3.3-70b-versatile`,
+  elegido por su tier gratuito sin tarjeta de crédito — relevante porque esta
+  herramienta se usaría muchas veces por semana sin generar costo) y para
+  ajustar el uso de tokens dentro de los límites de esa capa gratuita a
+  medida que se probó con preguntas reales (por ejemplo, bajar `max_tokens`
+  de la respuesta para dejar más margen de tokens-por-minuto).
 - El diseño visual (paleta, tipografía, layout) está **inspirado en la
   identidad de marca de Barrio Pizza** (mismo rojo `#CF2F2C` y negro
   `#231F20` de su sitio web), pero usando fuentes de Google Fonts libres de
@@ -208,7 +297,7 @@ Usé **Claude** (Anthropic) durante todo el desarrollo:
 ├── js/data-engine.js         # toda la lógica de negocio (proyección, alertas, anomalías)
 ├── js/app.js                 # renderizado de la interfaz y eventos
 ├── data/*.csv                 # los 4 archivos de datos
-├── api/chat.mjs                # función serverless — chat con Gemini 2.5 Flash
+├── api/chat.mjs                # función serverless — chat con Groq (llama-3.3-70b-versatile)
 ├── package.json
 └── vercel.json
 ```
