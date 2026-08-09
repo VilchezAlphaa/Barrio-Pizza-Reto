@@ -148,14 +148,14 @@ function wireTopbar() {
   document.getElementById('opt-reset').addEventListener('click', reiniciarEdiciones);
   document.getElementById('opt-about').addEventListener('click', mostrarAcercaDe);
 
-  // La exportación (CSV/Excel/PDF general) vive únicamente en el módulo "Informes",
+  // La exportación (Excel/PDF general) vive únicamente en el módulo "Informes",
   // para no repetir la misma acción en dos lugares distintos del menú.
-  document.getElementById('informes-export-csv')?.addEventListener('click', exportarCSV);
+  document.getElementById('informes-export-csv')?.addEventListener('click', exportarProveedorExcel);
   document.getElementById('informes-export-excel')?.addEventListener('click', exportarExcel);
   document.getElementById('informes-export-pdf')?.addEventListener('click', () => exportarPDF());
-  document.getElementById('informes-export-ajustes-csv')?.addEventListener('click', exportarAjustesCSV);
-  document.getElementById('informes-export-pedidos-csv')?.addEventListener('click', exportarPedidosFiltradosCSV);
-  document.getElementById('informes-export-historico-csv')?.addEventListener('click', exportarHistoricoCSV);
+  document.getElementById('informes-export-ajustes-csv')?.addEventListener('click', exportarAjustesExcel);
+  document.getElementById('informes-export-pedidos-csv')?.addEventListener('click', exportarPedidosFiltradosExcel);
+  document.getElementById('informes-export-historico-csv')?.addEventListener('click', exportarHistoricoExcel);
   wireInformesSubtabs();
 
   // Cerrar el modal de tendencia con Escape, igual que el modal "Acerca de"
@@ -185,18 +185,54 @@ function switchModule(key) {
    OPCIONES: exportar CSV, reiniciar, acerca de
    ========================================================= */
 
-function csvEscape(v) {
+function excelCellSafe(v) {
   if (v === undefined || v === null) return '';
-  const s = String(v);
-  // Escapamos comillas/; /saltos de línea con comillas dobles (regla estándar de CSV)
-  return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  return v;
 }
 
-// Se agrupa por proveedor (con encabezado propio por bloque) en vez de una sola tabla
-// plana gigante, y se usa ";" como separador + BOM de UTF-8 al inicio — así Excel en
-// español (que por configuración regional espera ";" y no ",") lo abre bien organizado
-// en columnas, con tildes/ñ correctas, en vez de amontonarlo todo en una sola celda.
-function exportarCSV() {
+// Descarga un array de filas (array de arrays) como .xlsx de una sola hoja, usando
+// autoCols (definido más abajo) para que cada columna se ajuste sola al contenido más
+// largo — así se evita el problema de CSV donde, si no ajustás el ancho a mano en Excel,
+// una celda larga "se come" visualmente a la de al lado.
+function descargarExcelSimple(filas, nombreArchivo, hojaNombre, mensajeToast) {
+  if (typeof XLSX === 'undefined') {
+    mostrarToast('No se pudo cargar la librería de Excel. Revisa tu conexión e intenta de nuevo.');
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(filas.map(row => row.map(excelCellSafe)));
+  ws['!cols'] = autoCols(filas, { max: 70 });
+  XLSX.utils.book_append_sheet(wb, ws, (hojaNombre || 'Hoja1').slice(0, 31));
+  XLSX.writeFile(wb, nombreArchivo);
+  mostrarToast(mensajeToast || 'Excel exportado.');
+}
+
+// Convierte una <table> ya renderizada en el DOM (con el filtro que la gerente tenga puesto)
+// a filas (array de arrays), quitando iconos/puntos de estado (celdas sin texto) para que
+// quede limpio al exportar. El nombre quedó como "ACSV" en el código pero ahora alimenta
+// tanto CSV como Excel — extrae filas de texto, no un formato de archivo en particular.
+function tablaVisibleACSV(tableId) {
+  const table = document.getElementById(tableId);
+  if (!table) return [];
+  const headerCells = [...table.querySelectorAll('thead tr th')];
+  const colsAOmitir = new Set(headerCells.map((th, i) => th.textContent.trim() === '' ? i : -1).filter(i => i >= 0));
+
+  const filas = [];
+  table.querySelectorAll('thead tr').forEach(tr => {
+    filas.push([...tr.children].filter((td, i) => !colsAOmitir.has(i)).map(td => td.textContent.trim()));
+  });
+  table.querySelectorAll('tbody tr').forEach(tr => {
+    const celdas = [...tr.children].filter((td, i) => !colsAOmitir.has(i)).map(td => td.textContent.trim());
+    if (celdas.some(c => c)) filas.push(celdas); // se salta la fila de "no hay datos"
+  });
+  return filas;
+}
+
+// Agrupado por proveedor (con encabezado propio por bloque) en vez de una sola tabla
+// plana gigante — mismo criterio de agrupación que antes tenía el CSV, pero ahora como
+// hoja de Excel con ancho de columna automático (autoCols), en vez de depender de que la
+// gerente autoajuste las columnas a mano al abrir un .csv.
+function exportarProveedorExcel() {
   const data = DataEngine.pedidoCorregidoPorProveedor(STATE, METODO_ACTUAL);
   const fecha = new Date().toLocaleDateString('es-PA');
   const filas = [];
@@ -218,50 +254,10 @@ function exportarCSV() {
     filas.push([]); // línea en blanco entre proveedores, para que se vea como bloques separados
   });
 
-  const csv = filas.map(row => row.map(csvEscape).join(';')).join('\r\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `barrio-pizza-pedido-por-proveedor-${new Date().toISOString().split('T')[0]}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  mostrarToast('CSV exportado. Tip: en Excel, seleccioná todo (Ctrl+A) y hacé doble clic entre dos columnas para autoajustar el ancho.');
+  descargarExcelSimple(filas, `barrio-pizza-pedido-por-proveedor-${new Date().toISOString().split('T')[0]}.xlsx`, 'Por proveedor', 'Excel exportado — una fila por ingrediente, agrupado por proveedor.');
 }
 
-// Descarga un array de filas (array de arrays) como CSV, con BOM + ";" (mismo criterio que exportarCSV).
-function descargarCSV(filas, nombreArchivo, mensajeToast) {
-  const csv = filas.map(row => row.map(csvEscape).join(';')).join('\r\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = nombreArchivo;
-  a.click();
-  URL.revokeObjectURL(url);
-  mostrarToast(mensajeToast || 'CSV exportado.');
-}
-
-// Convierte una <table> ya renderizada en el DOM (con el filtro que la gerente tenga puesto)
-// a filas de CSV, quitando iconos/puntos de estado (celdas sin texto) para que quede limpio.
-function tablaVisibleACSV(tableId) {
-  const table = document.getElementById(tableId);
-  if (!table) return [];
-  const headerCells = [...table.querySelectorAll('thead tr th')];
-  const colsAOmitir = new Set(headerCells.map((th, i) => th.textContent.trim() === '' ? i : -1).filter(i => i >= 0));
-
-  const filas = [];
-  table.querySelectorAll('thead tr').forEach(tr => {
-    filas.push([...tr.children].filter((td, i) => !colsAOmitir.has(i)).map(td => td.textContent.trim()));
-  });
-  table.querySelectorAll('tbody tr').forEach(tr => {
-    const celdas = [...tr.children].filter((td, i) => !colsAOmitir.has(i)).map(td => td.textContent.trim());
-    if (celdas.some(c => c)) filas.push(celdas); // se salta la fila de "no hay datos"
-  });
-  return filas;
-}
-
-function exportarAjustesCSV() {
+function exportarAjustesExcel() {
   const cambios = calcularEdicionesGerente();
   if (!cambios.length) { mostrarToast('Todavía no hay ajustes que exportar — edita alguna cantidad en "Sucursales" primero.'); return; }
   const filas = [
@@ -271,21 +267,21 @@ function exportarAjustesCSV() {
     ['Sucursal', 'Ingrediente', 'Pedido original', 'Pedido corregido', 'Diferencia'],
     ...cambios.map(c => [c.sucursal, c.nombre, round1(c.antes), round1(c.ahora), (c.diferencia > 0 ? '+' : '') + round1(c.diferencia)]),
   ];
-  descargarCSV(filas, `barrio-pizza-ajustes-${new Date().toISOString().split('T')[0]}.csv`, 'CSV de ajustes exportado.');
+  descargarExcelSimple(filas, `barrio-pizza-ajustes-${new Date().toISOString().split('T')[0]}.xlsx`, 'Ajustes', 'Excel de ajustes exportado.');
 }
 
-function exportarPedidosFiltradosCSV() {
+function exportarPedidosFiltradosExcel() {
   const filas = tablaVisibleACSV('informes-full-table');
   if (filas.length < 2) { mostrarToast('No hay pedidos que coincidan con el filtro actual.'); return; }
   filas.unshift(['BARRIO PIZZA - Pedidos (filtro aplicado en Informes)'], [`Generado: ${new Date().toLocaleDateString('es-PA')}`], []);
-  descargarCSV(filas, `barrio-pizza-pedidos-filtrados-${new Date().toISOString().split('T')[0]}.csv`, 'CSV de pedidos filtrados exportado.');
+  descargarExcelSimple(filas, `barrio-pizza-pedidos-filtrados-${new Date().toISOString().split('T')[0]}.xlsx`, 'Pedidos filtrados', 'Excel de pedidos filtrados exportado.');
 }
 
-function exportarHistoricoCSV() {
+function exportarHistoricoExcel() {
   const filas = tablaVisibleACSV('informes-historico-table');
   if (filas.length < 2) { mostrarToast('No hay datos de consumo para esta semana/filtro.'); return; }
   filas.unshift(['BARRIO PIZZA - Historial de consumo'], [`Generado: ${new Date().toLocaleDateString('es-PA')}`], []);
-  descargarCSV(filas, `barrio-pizza-historico-${new Date().toISOString().split('T')[0]}.csv`, 'CSV de historial exportado.');
+  descargarExcelSimple(filas, `barrio-pizza-historico-${new Date().toISOString().split('T')[0]}.xlsx`, 'Historial', 'Excel de historial exportado.');
 }
 
 function wireInformesSubtabs() {

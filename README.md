@@ -197,8 +197,14 @@ completo** (en unidad base) se considera redondeo normal, no una alerta.
   ingrediente no catalogado. Se calcula una sola vez en el motor y se reutiliza
   en las tarjetas, la tabla, el Excel y el PDF, para que nunca queden
   desalineados.
-- **Exportación a Excel multi-hoja** (SheetJS): además del CSV plano, se puede
-  exportar un `.xlsx` con una hoja de resumen, una hoja con todas las alertas
+- **Todas las exportaciones de Informes son Excel, no CSV**: cada pestaña
+  (General, Ajustes de la gerente, Todos los pedidos, Historial de consumo)
+  descarga un `.xlsx` con el ancho de columna ajustado automáticamente al
+  contenido más largo de cada columna — a diferencia de CSV, que en Excel
+  requiere autoajustar las columnas a mano o el texto largo se ve "comido"
+  por la celda de al lado.
+- **Exportación a Excel multi-hoja** (SheetJS), en la pestaña General: un
+  `.xlsx` con una hoja de resumen, una hoja con todas las alertas
   (motivo + acción sugerida), y **una hoja por proveedor** — lista para
   reenviar sin editar nada.
 - **Exportación a PDF por proveedor** (jsPDF + autoTable): genera un PDF con
