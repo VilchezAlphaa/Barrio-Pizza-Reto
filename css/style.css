@@ -84,9 +84,9 @@ input,select{font-family:inherit}
   padding:2.5rem 2rem 1.5rem;
 }
 .hero-title{
-  font-family:var(--font-display);
-  font-size:clamp(1.8rem,4vw,3rem);
-  letter-spacing:.01em;line-height:1;
+  font-family:var(--font-body);font-weight:800;
+  font-size:clamp(1.7rem,3.6vw,2.7rem);
+  letter-spacing:-.015em;line-height:1.15;
   margin-bottom:.4rem;
 }
 .hero-title .word-red{color:var(--red)}
@@ -426,7 +426,18 @@ table.orders-table tr:hover td{background:rgba(255,255,255,.02)}
 .module.active{display:block}
 
 .page-header{padding:2rem 2rem .5rem;max-width:1500px;margin:0 auto}
-.page-header h2{font-family:var(--font-display);font-size:1.6rem;letter-spacing:.01em;margin-bottom:.3rem}
+.page-header h2{
+  font-family:var(--font-body);font-weight:800;
+  font-size:1.5rem;letter-spacing:-.01em;line-height:1.25;
+  margin-bottom:.3rem;
+  display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;
+}
+.page-header h2 .badge-count{
+  font-family:var(--font-mono);font-weight:600;font-size:.65rem;
+  background:var(--red);color:var(--white);
+  padding:.2rem .6rem;border-radius:999px;letter-spacing:0;
+  vertical-align:middle;
+}
 
 .link-btn{
   font-family:var(--font-mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;
