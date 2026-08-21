@@ -14,7 +14,7 @@
   --wine-light:#A23347;
   --wine-deep:#4A0D18;
   --white-soft:rgba(255,255,255,.78);
-  --bone-blue:#E4E8F4;
+  --bone-blue:#F1EADC;
   --brown:#3F231A;
   --cream:#F0E8E0;
   --bone:#f9f7f4;
@@ -599,33 +599,33 @@ table.orders-table tr:hover td{background:rgba(255,255,255,.02)}
 /* Cuadros de verdad: aspect-ratio en vez de min-height, así nunca se estiran en
    rectángulos — el alto siempre sigue al ancho de la columna. */
 .eventos-day{
-  aspect-ratio:1/1;border:1px solid rgba(162,51,71,.32);border-radius:10px;
+  aspect-ratio:1/1;border:1.5px solid var(--wine-light);border-radius:10px;
   padding:.45rem .5rem;position:relative;cursor:pointer;
-  background:rgba(228,232,244,.05);
+  background:var(--bone-blue);
   display:flex;flex-direction:column;gap:.25rem;overflow:hidden;
   transition:transform .18s var(--ease-out-expo), border-color .18s, background .18s, box-shadow .18s;
 }
 /* Zoom casi imperceptible al pasar el mouse — solo lo suficiente para sentirse premium */
 .eventos-day:hover{
   transform:scale(1.035);
-  border-color:var(--wine-light);
-  background:rgba(228,232,244,.09);
-  box-shadow:0 6px 18px rgba(0,0,0,.3);
+  border-color:var(--wine);
+  background:linear-gradient(0deg, rgba(110,20,35,.1), rgba(110,20,35,.1)), var(--bone-blue);
+  box-shadow:0 6px 18px rgba(0,0,0,.35);
   z-index:2;
 }
-.eventos-day.outside{opacity:.28;cursor:default}
-.eventos-day.outside:hover{transform:none;box-shadow:none;border-color:rgba(162,51,71,.32);background:rgba(228,232,244,.05)}
+.eventos-day.outside{opacity:.4;cursor:default}
+.eventos-day.outside:hover{transform:none;box-shadow:none;border-color:var(--wine-light);background:var(--bone-blue)}
 .eventos-day.today{
-  border-color:var(--wine-light);
-  background:linear-gradient(160deg, rgba(110,20,35,.55), rgba(74,13,24,.4));
-  box-shadow:inset 0 0 0 1px var(--wine-light);
+  border-color:var(--wine);
+  background:linear-gradient(160deg, var(--wine), var(--wine-deep));
+  box-shadow:0 0 0 2px var(--wine-light);
 }
-.eventos-day-num{font-family:var(--font-mono);font-size:.72rem;color:var(--white-soft)}
-.eventos-day.today .eventos-day-num{color:#fff;font-weight:600}
+.eventos-day-num{font-family:var(--font-mono);font-size:.72rem;color:var(--black);font-weight:500}
+.eventos-day.today .eventos-day-num{color:var(--bone-blue);font-weight:700}
 .eventos-day-chip{
   display:flex;align-items:center;gap:.3rem;max-width:100%;
   font-size:.64rem;line-height:1.3;padding:.22rem .4rem;border-radius:5px;
-  background:rgba(255,255,255,.16);color:#fff;font-weight:600;
+  background:rgba(35,31,32,.85);color:#fff;font-weight:600;
   white-space:nowrap;overflow:hidden;
 }
 .eventos-day-chip-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto}
@@ -633,10 +633,12 @@ table.orders-table tr:hover td{background:rgba(255,255,255,.02)}
 .eventos-day-chip.up{background:var(--green-ok)}
 .eventos-day-chip.down{background:var(--red)}
 .eventos-day-add{
-  margin-top:auto;align-self:flex-end;font-size:.72rem;color:rgba(255,255,255,0);
+  margin-top:auto;align-self:flex-end;font-size:.72rem;color:rgba(35,31,32,0);
   transition:color .2s;
 }
-.eventos-day:hover .eventos-day-add{color:var(--white-soft)}
+.eventos-day:hover .eventos-day-add{color:rgba(35,31,32,.45)}
+.eventos-day.today .eventos-day-add{color:rgba(241,234,220,0)}
+.eventos-day.today:hover .eventos-day-add{color:rgba(241,234,220,.55)}
 @media (max-width:480px){
   .eventos-month-nav{flex-wrap:wrap;justify-content:center}
   .eventos-month-today-ghost{display:none}
