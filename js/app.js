@@ -104,7 +104,6 @@ async function init() {
 }
 
 function renderAll() {
-  renderKPIs();
   renderSummaryBar();
   renderEventBanner();
   renderResumen();
@@ -602,45 +601,16 @@ function mostrarTendencia(sucursal, ingId) {
   });
 }
 
-/* ---------------- KPIs ---------------- */
-
-function renderKPIs() {
-  const filas = DataEngine.todasLasFilas(STATE, METODO_ACTUAL);
-  const olvidos = DataEngine.alertasOlvido(STATE);
-  // enOrden !== false: excluye los "olvidados" (nunca aparecieron en la orden), que
-  // ya se cuentan aparte en `olvidos`. Sin este filtro, un mismo ítem olvidado se
-  // sumaba dos veces (una como "sin stock" y otra como "olvidado").
-  const crit = filas.filter(f => f.status === 'crit' && f.enOrden !== false).length;
-  const warn = filas.filter(f => f.status === 'warn').length;
-  const unknown = filas.filter(f => f.status === 'unknown').length;
-  const ok = filas.filter(f => f.status === 'ok').length;
-
-  const kpis = [
-    { n: crit, label: 'Se puede quedar sin stock', cls: 'crit', help: 'La sucursal sí pidió este ingrediente, pero pidió menos de lo que va a necesitar según la proyección.' },
-    { n: warn, label: 'Sobre-pedido', cls: 'warn', help: 'La sucursal pidió más de lo que va a necesitar según la proyección. En ingredientes que vencen rápido, puede significar desperdicio.' },
-    { n: olvidos.length, label: 'Ingredientes olvidados', cls: 'crit', help: 'La sucursal ni siquiera puso este ingrediente en su orden esta semana — no es que pidió poco, es que no aparece.' },
-    { n: unknown, label: 'No catalogados', cls: 'unknown', help: 'El ingrediente está en la orden pero no existe en el catálogo, así que no se puede calcular si alcanza o no.' },
-    { n: ok, label: 'Órdenes correctas', cls: 'ok', help: 'La cantidad pedida está bien ajustada a lo que se proyecta que la sucursal va a consumir.' },
-  ];
-
-  document.getElementById('kpi-row').innerHTML = kpis.map((k, i) => `
-    <div class="kpi-card ${k.cls}" style="animation-delay:${i * 0.05}s">
-      <div class="kpi-num">${k.n}</div>
-      <span class="kpi-label">${k.label}${helpHint(k.help)}</span>
-    </div>
-  `).join('');
-}
-
 /* ---------------- Barra de resumen (chips compactos) ---------------- */
 
 function renderSummaryBar() {
   renderSummaryBarInto('status-summary-bar');
 }
 
-// Misma barra de chips, reutilizable con cualquier id (se usa también en Informes)
+// Misma barra de chips, reutilizable con cualquier id (se usa también en Informes).
+// Cada chip trae su ⓘ con el detalle/texto largo — es la única versión de este
+// resumen en el Dashboard (antes se repetía también en la fila de KPIs grandes).
 function renderSummaryBarInto(elId) {
-  // Usa exactamente las mismas categorías que el KPI row de abajo (mismos números,
-  // solo en formato de chip compacto) para no mostrar dos conteos distintos de lo mismo.
   const bar = document.getElementById(elId);
   if (!bar) return;
   const filas = DataEngine.todasLasFilas(STATE, METODO_ACTUAL);
@@ -651,17 +621,17 @@ function renderSummaryBarInto(elId) {
   const ok = filas.filter(f => f.status === 'ok').length;
 
   const chips = [
-    { n: ok, label: 'correctas', cls: 'ok' },
-    { n: warn, label: 'sobre-pedido', cls: 'warn' },
-    { n: crit, label: 'sin stock', cls: 'crit' },
-    { n: olvidos.length, label: 'olvidos', cls: 'crit' },
-    { n: unknown, label: 'no catalogados', cls: 'unknown' },
+    { n: ok, label: 'correctas', cls: 'ok', help: 'La cantidad pedida está bien ajustada a lo que se proyecta que la sucursal va a consumir.' },
+    { n: warn, label: 'sobre-pedido', cls: 'warn', help: 'La sucursal pidió más de lo que va a necesitar según la proyección. En ingredientes que vencen rápido, puede significar desperdicio.' },
+    { n: crit, label: 'sin stock', cls: 'crit', help: 'La sucursal sí pidió este ingrediente, pero pidió menos de lo que va a necesitar según la proyección.' },
+    { n: olvidos.length, label: 'olvidos', cls: 'crit', help: 'La sucursal ni siquiera puso este ingrediente en su orden esta semana — no es que pidió poco, es que no aparece.' },
+    { n: unknown, label: 'no catalogados', cls: 'unknown', help: 'El ingrediente está en la orden pero no existe en el catálogo, así que no se puede calcular si alcanza o no.' },
   ];
 
   bar.innerHTML = chips.map((c, i) => `
     <div class="summary-chip ${c.cls}" style="animation-delay:${i * 0.06}s">
       <span class="summary-chip-num">${c.n}</span>
-      <span class="summary-chip-label">${c.label}</span>
+      <span class="summary-chip-label">${c.label}${helpHint(c.help)}</span>
     </div>
   `).join('');
 }
@@ -733,45 +703,101 @@ function eventCountdownLabel(dias) {
   return `EN ${dias} DÍAS`;
 }
 
+function eventCountdownLabelLower(dias) {
+  if (dias === 0) return 'hoy';
+  if (dias === 1) return 'mañana';
+  return `en ${dias} días`;
+}
+
 function fechaISO(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function eventoBannerHTML(e) {
-  const suc = e.sucursalMasAfectada;
-  const sucTxt = suc ? ` — la más afectada históricamente es <b>${suc}</b> (+${round1(e.alzaMasAfectada)}%)` : '';
+// Card compacta — solo para el slot de Resumen/Dashboard. Sin barra por sucursal,
+// sin botón, sin categoría, sin acción sugerida.
+function eventoBannerCompactHTML(e) {
+  const dir = e.sinEstimado ? '' : (e.alzaPromedio >= 0 ? 'up' : 'down');
+  const pctTxt = e.sinEstimado
+    ? `<span class="pem-pct-label">sin estimado</span>`
+    : `<span class="pem-pct ${dir}">${e.alzaPromedio >= 0 ? '+' : ''}${round1(e.alzaPromedio)}%</span>`;
+  return `
+    <div class="proximo-evento-mini" style="animation-delay:0s">
+      <div class="pem-label">Próximo evento · ${eventCountdownLabelLower(e.diasFaltantes)}</div>
+      <div class="pem-nombre-row">
+        <span class="pem-nombre">${e.nombre}</span>
+        ${pctTxt}
+      </div>
+    </div>
+  `;
+}
+
+// Card detallada — solo para el slot del módulo Eventos. Desglose colapsable por
+// sucursal, ordenado de mayor a menor alza.
+function eventoBannerDetailedHTML(e) {
   const impacto = e.sinEstimado
     ? `sin estimado histórico todavía (evento nuevo)`
-    : `alza histórica promedio de <b>${e.alzaPromedio >= 0 ? '+' : ''}${round1(e.alzaPromedio)}%</b> en ventas${sucTxt}`;
+    : `alza histórica promedio de <b>${e.alzaPromedio >= 0 ? '+' : ''}${round1(e.alzaPromedio)}%</b> en ventas`;
+
+  const filasOrdenadas = STATE.sucursales
+    .map(s => ({ suc: s, v: e.porSucursal[s] }))
+    .filter(f => typeof f.v === 'number' && !isNaN(f.v))
+    .sort((a, b) => b.v - a.v);
+
+  const bars = filasOrdenadas.map(({ suc, v }) => {
+    const ancho = Math.min(100, Math.abs(v));
+    const dir = v >= 0 ? 'up' : 'down';
+    return `
+      <div class="evento-bar-row">
+        <span class="evento-bar-suc">${sucDot(suc)}${suc}</span>
+        <div class="evento-bar-track">
+          <div class="evento-bar-fill ${dir}" style="width:${ancho}%"></div>
+        </div>
+        <span class="evento-bar-val ${dir}">${v >= 0 ? '+' : ''}${round1(v)}%</span>
+      </div>
+    `;
+  }).join('');
+
+  const desglose = bars ? `
+    <div class="evento-banner-toggle" data-evento-banner-toggle="1">Ver desglose por sucursal ▾</div>
+    <div class="evento-card-detalle">${bars}</div>
+  ` : '';
+
   return `
-    <div class="alert-card info evento-banner" style="animation-delay:0s">
+    <div class="alert-card info evento-banner evento-banner-detailed" style="animation-delay:0s">
       <div class="alert-top">
         <span class="alert-tag">PRÓXIMO EVENTO · ${eventCountdownLabel(e.diasFaltantes)}</span>
-        <button class="link-btn evento-banner-ir" type="button" data-ir-eventos="1">Ver en Eventos →</button>
       </div>
       <div class="alert-msg">
         <b>${e.nombre}</b> (${e.categoria}) — ${impacto}.
       </div>
+      ${desglose}
       <div class="accion-sugerida">→ Revisa si conviene reforzar el pedido de esta semana antes de cerrarlo, especialmente en las sucursales más afectadas.</div>
     </div>
   `;
 }
 
-// Rellena el/los aviso(s) en Resumen y (opcionalmente) en el propio módulo Eventos —
-// usa la misma tarjeta en los dos lugares para no duplicar el criterio de "cuándo avisar".
-// Muestra hasta 2 eventos si hay más de uno aproximándose dentro de la ventana (ej. una
-// fecha comercial y un feriado nacional cayendo la misma semana).
+// Rellena el aviso compacto en Resumen (1 evento) y el/los aviso(s) detallados en el
+// módulo Eventos (hasta 2, ej. una fecha comercial y un feriado nacional cayendo la
+// misma semana), cada uno con su propio formato.
 function renderEventBanner() {
-  const eventos = DataEngine.eventosProximos(STATE, VENTANA_AVISO_DIAS, null, 2);
-  const html = eventos.map(eventoBannerHTML).join('');
-  ['evento-banner-slot', 'evento-banner-slot-eventos'].forEach(id => {
-    const slot = document.getElementById(id);
-    if (!slot) return;
-    slot.innerHTML = html;
-  });
-  document.querySelectorAll('.evento-banner-ir').forEach(btn => {
-    btn.addEventListener('click', () => switchModule('eventos'));
-  });
+  const compacto = DataEngine.eventosProximos(STATE, VENTANA_AVISO_DIAS, null, 1);
+  const slotResumen = document.getElementById('evento-banner-slot');
+  if (slotResumen) slotResumen.innerHTML = compacto.map(eventoBannerCompactHTML).join('');
+
+  const detallado = DataEngine.eventosProximos(STATE, VENTANA_AVISO_DIAS, null, 2);
+  const slotEventos = document.getElementById('evento-banner-slot-eventos');
+  if (slotEventos) {
+    slotEventos.innerHTML = detallado.map(eventoBannerDetailedHTML).join('');
+    slotEventos.querySelectorAll('[data-evento-banner-toggle]').forEach(t => {
+      t.addEventListener('click', () => {
+        const card = t.closest('.evento-banner-detailed');
+        card.classList.toggle('open');
+        t.textContent = card.classList.contains('open')
+          ? 'Ocultar desglose por sucursal ▲'
+          : 'Ver desglose por sucursal ▾';
+      });
+    });
+  }
 }
 
 function renderEventos() {
@@ -862,8 +888,6 @@ function wireEventosMes() {
     EVENTOS_MES_VISTA = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
     renderEventosMes();
   });
-  document.getElementById('evento-quicklink-btn')?.addEventListener('click', () => switchModule('eventos'));
-
   const weekdaysCont = document.getElementById('eventos-grid-weekdays');
   if (weekdaysCont) weekdaysCont.innerHTML = NOMBRES_DIA_SEMANA.map(d => `<span>${d}</span>`).join('');
 }
@@ -915,9 +939,9 @@ function renderEventosMes() {
     const eventosDia = eventosPorDia[c.dia] || [];
     const chips = eventosDia.map(e => {
       const dir = e.sinEstimado ? '' : (e.alzaPromedio >= 0 ? 'up' : 'down');
-      const clase = e.base ? '' : 'custom';
-      const titulo = e.sinEstimado ? e.nombre : `${e.nombre} (${e.alzaPromedio >= 0 ? '+' : ''}${round1(e.alzaPromedio)}%)`;
-      return `<span class="eventos-day-chip ${clase} ${dir}" data-evento-chip="${e.id}" data-evento-fecha="${fechaISO(c.fecha)}" title="${e.nombre}">${titulo}</span>`;
+      const pctTxt = e.sinEstimado ? '' : `${e.alzaPromedio >= 0 ? '+' : ''}${round1(e.alzaPromedio)}%`;
+      const tituloAttr = `${e.nombre}${pctTxt ? ' (' + pctTxt + ')' : ''}`;
+      return `<span class="eventos-day-chip ${dir}" data-evento-chip="${e.id}" data-evento-fecha="${fechaISO(c.fecha)}" title="${tituloAttr}"><span class="eventos-day-chip-name">${e.nombre}</span>${pctTxt ? `<span class="eventos-day-chip-pct">${pctTxt}</span>` : ''}</span>`;
     }).join('');
     return `
       <div class="eventos-day ${esHoy ? 'today' : ''}" data-dia-fecha="${fechaISO(c.fecha)}">
@@ -988,8 +1012,20 @@ function abrirFormularioEvento(fechaPrellenada, eventoExistente) {
         <label class="evento-form-check"><input type="checkbox" id="evento-form-recurrente" ${eventoExistente && eventoExistente.recurrente ? 'checked' : ''}> Se repite cada año en esta misma fecha</label>
       </div>
       <div class="evento-form-row">
-        <label for="evento-form-alza">% de alza/baja esperado (opcional)</label>
-        <input type="number" step="0.1" id="evento-form-alza" placeholder="Ej. 15 (sube) o -10 (baja) — déjalo vacío si no lo sabes todavía" value="${eventoExistente && !eventoExistente.sinEstimado ? eventoExistente.alzaPromedio : ''}">
+        <label>% de alza/baja esperado por sucursal (opcional)</label>
+        <div class="evento-form-sucursales">
+          ${STATE.sucursales.map(suc => `
+            <div class="evento-form-suc-row">
+              <span class="evento-form-suc-label">${sucDot(suc)}${suc}</span>
+              <input type="number" step="0.1" class="evento-form-suc-input"
+                     data-suc="${suc}" placeholder="Ej. 15 o -10"
+                     value="${eventoExistente?.porSucursal?.[suc] ?? ''}">
+            </div>
+          `).join('')}
+        </div>
+        <p class="text-muted" style="font-size:.72rem;margin-top:.2rem">
+          Deja en blanco las sucursales de las que no tengas estimado todavía.
+        </p>
       </div>
       <div class="evento-form-row">
         <label for="evento-form-notas">Notas (opcional)</label>
@@ -1022,12 +1058,16 @@ function abrirFormularioEvento(fechaPrellenada, eventoExistente) {
       errorEl.classList.add('visible');
       return;
     }
+    const porSucursal = {};
+    document.querySelectorAll('.evento-form-suc-input').forEach(inp => {
+      porSucursal[inp.dataset.suc] = inp.value;
+    });
     const datos = {
       nombre,
       categoria: document.getElementById('evento-form-categoria').value,
       fecha,
       recurrente: document.getElementById('evento-form-recurrente').checked,
-      alzaPromedio: document.getElementById('evento-form-alza').value,
+      porSucursal,
       notas: document.getElementById('evento-form-notas').value.trim(),
     };
     if (esEdicion) DataEngine.eliminarEventoPersonalizado(eventoExistente.id); // simplifica: editar = borrar + crear de nuevo
@@ -1413,7 +1453,7 @@ function renderProviders() {
     return `
       <div class="provider-block">
         <div class="provider-head">
-          <span>${prov}</span>
+          <span class="provider-name">${prov}</span>
           <div class="provider-head-right">
             <span class="text-muted">${Object.keys(items).length} ítem(s) · ${sucursalesInvolucradas.size} sucursal${sucursalesInvolucradas.size === 1 ? '' : 'es'}</span>
             <div class="provider-actions">

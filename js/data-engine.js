@@ -173,7 +173,20 @@ const DataEngine = (function () {
   }
 
   function _normalizarPersonalizado(r) {
-    const tieneEstimado = r.alzaPromedio !== null && r.alzaPromedio !== undefined && r.alzaPromedio !== '';
+    // porSucursal: objeto { 'Marbella': 15, 'Costa del Este': 5, ... } — solo trae las
+    // sucursales para las que la gerente puso un número; las demás simplemente no aparecen
+    // (equivalente a "sin estimado para esa sucursal"), igual que se dejan en blanco en el form.
+    const porSucursalRaw = (r.porSucursal && typeof r.porSucursal === 'object') ? r.porSucursal : {};
+    const porSucursal = {};
+    Object.entries(porSucursalRaw).forEach(([suc, v]) => {
+      const n = Number(v);
+      if (!isNaN(n)) porSucursal[suc] = n;
+    });
+    const valores = Object.values(porSucursal);
+    const tieneEstimado = valores.length > 0;
+    const ordenadas = Object.entries(porSucursal).sort((a, b) => b[1] - a[1]);
+    const masAfectada = ordenadas[0] || null;
+    const menosAfectada = ordenadas[ordenadas.length - 1] || null;
     return {
       id: r.id,
       nombre: r.nombre,
@@ -182,11 +195,13 @@ const DataEngine = (function () {
       recurrente: !!r.recurrente,
       notas: r.notas || '',
       base: false,
-      porSucursal: {},
-      alzaPromedio: tieneEstimado ? Number(r.alzaPromedio) : 0,
+      porSucursal,
+      alzaPromedio: tieneEstimado ? mean(valores) : 0,
       sinEstimado: !tieneEstimado,
-      sucursalMasAfectada: null, alzaMasAfectada: null,
-      sucursalMenosAfectada: null, alzaMenosAfectada: null,
+      sucursalMasAfectada: masAfectada ? masAfectada[0] : null,
+      alzaMasAfectada: masAfectada ? masAfectada[1] : null,
+      sucursalMenosAfectada: menosAfectada ? menosAfectada[0] : null,
+      alzaMenosAfectada: menosAfectada ? menosAfectada[1] : null,
     };
   }
 
@@ -201,13 +216,19 @@ const DataEngine = (function () {
     if (!datos || !datos.nombre || !datos.fecha) return null;
     const arr = _leerPersonalizadosRaw();
     const id = 'custom:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    const porSucursal = {};
+    Object.entries(datos.porSucursal || {}).forEach(([suc, v]) => {
+      if (v === '' || v === undefined || v === null) return; // sucursal dejada en blanco = sin estimado para ella
+      const n = Number(v);
+      if (!isNaN(n)) porSucursal[suc] = n;
+    });
     arr.push({
       id,
       nombre: String(datos.nombre).trim(),
       categoria: datos.categoria || 'Personalizado',
       fecha: datos.fecha,
       recurrente: !!datos.recurrente,
-      alzaPromedio: (datos.alzaPromedio === '' || datos.alzaPromedio === undefined) ? null : datos.alzaPromedio,
+      porSucursal,
       notas: datos.notas || '',
     });
     _guardarPersonalizadosRaw(arr);
