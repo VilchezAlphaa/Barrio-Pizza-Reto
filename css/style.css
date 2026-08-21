@@ -477,9 +477,25 @@ table.orders-table td:first-child{padding-top:1rem}
 .chat-panel{display:flex;flex-direction:column;height:520px}
 .chat-log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.7rem;padding:.3rem;margin-bottom:.8rem}
 .chat-msg{max-width:90%;padding:.6rem .9rem;border-radius:10px;font-size:.85rem;line-height:1.5}
+.chat-msg.bot{max-width:96%}
 .chat-msg.user{align-self:flex-end;background:var(--red);color:#fff;border-bottom-right-radius:2px}
 .chat-msg.bot{align-self:flex-start;background:rgba(255,255,255,.06);border-bottom-left-radius:2px;white-space:pre-wrap}
 .chat-msg.bot.loading{color:rgba(255,255,255,.5);font-family:var(--font-mono);font-size:.75rem}
+.chat-msg.bot.chat-msg-md{white-space:normal}
+.chat-msg-md p{margin:0 0 .5rem}
+.chat-msg-md p:last-child{margin-bottom:0}
+.chat-msg-md ul,.chat-msg-md ol{margin:.3rem 0 .5rem 1.1rem}
+.chat-msg-md b,.chat-msg-md strong{color:var(--white)}
+.chat-msg-md table{
+  width:100%;border-collapse:collapse;margin:.4rem 0 .6rem;font-size:.78rem;
+  background:rgba(0,0,0,.15);border-radius:6px;overflow:hidden;
+}
+.chat-msg-md th{
+  text-align:left;font-family:var(--font-mono);font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;
+  color:rgba(255,255,255,.55);padding:.4rem .55rem;border-bottom:1px solid rgba(255,255,255,.15);white-space:nowrap;
+}
+.chat-msg-md td{padding:.4rem .55rem;border-bottom:1px solid rgba(255,255,255,.07)}
+.chat-msg-md tr:last-child td{border-bottom:none}
 .chat-input-row{display:flex;gap:.5rem}
 .chat-input-row input{
   flex:1;background:var(--black);border:1px solid rgba(255,255,255,.15);color:var(--white);

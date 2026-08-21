@@ -1769,7 +1769,7 @@ function wireChat() {
       });
       const data = await res.json();
       loadingEl.classList.remove('loading');
-      loadingEl.textContent = data.answer || data.error || 'No pude generar una respuesta. Intenta de nuevo.';
+      setChatMsgContent(loadingEl, data.answer || data.error || 'No pude generar una respuesta. Intenta de nuevo.', !!data.answer);
     } catch (err) {
       loadingEl.classList.remove('loading');
       loadingEl.textContent = 'Error al conectar con el asistente. Revisa que /api/chat esté desplegado (esto solo funciona una vez publicado en Vercel, no en preview local sin backend).';
@@ -1785,6 +1785,19 @@ function appendChatMsg(log, text, cls) {
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
   return div;
+}
+
+// Las respuestas del asistente pueden traer markdown (tablas, negritas, listas) —
+// se renderiza como HTML real con `marked` para que las tablas se vean como tablas,
+// no como texto con pipes "|". El mensaje del usuario nunca pasa por acá (solo texto
+// plano), y los errores tampoco (son mensajes fijos nuestros, no del modelo).
+function setChatMsgContent(el, text, esMarkdown) {
+  if (esMarkdown && typeof marked !== 'undefined') {
+    el.innerHTML = marked.parse(text);
+    el.classList.add('chat-msg-md');
+  } else {
+    el.textContent = text;
+  }
 }
 
 /* ---------------- Utils ---------------- */

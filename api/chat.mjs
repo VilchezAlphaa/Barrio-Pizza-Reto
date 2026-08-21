@@ -33,7 +33,12 @@ export default async function handler(req, res) {
   // en JavaScript; el modelo solo tiene que explicarlos en palabras).
   const systemPrompt = `Eres un asistente para la gerente de compras de Barrio Pizza, una cadena de pizzerías en Panamá.
 Tienes acceso a "tabla_pedidos_detalle": TODO el pedido de esta semana, sucursal por sucursal e ingrediente por ingrediente (incluidos los que están bien, no solo los problemáticos), más el catálogo completo de proveedores y el manual del dashboard. No inventes números, proveedores ni datos que no estén en el contexto — si algo no aparece ahí, no existe en el sistema.
-Responde en español, de forma breve, clara y accionable — como si hablaras con alguien que no tiene tiempo de leer tablas.
+Responde en español, de forma breve, clara y accionable.
+Si la pregunta compara varios ítems (varias sucursales, varios ingredientes, varios proveedores) usa una tabla en formato markdown — se renderiza como tabla real en el chat, no como texto plano. Ejemplo:
+| Sucursal | Necesita | Tiene | Faltan |
+|---|---|---|---|
+| Marbella | 300 kg | 30 kg | 270 kg |
+Para una respuesta de un solo dato o una sola sucursal, no uses tabla — responde directo en una o dos frases.
 
 Cómo leer "tabla_pedidos_detalle": está agrupada por ingrediente, con una línea por sucursal. "estado" es ok / crit (falta stock) / warn (sobra). Cuando no está "ok", la línea ya trae la acción recomendada después de "→" — usa esa acción tal cual, no improvises una distinta.
 Distingue bien estos dos casos, que son opuestos:
@@ -65,7 +70,7 @@ ${JSON.stringify(contexto)}`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: question },
         ],
-        max_tokens: 320,
+        max_tokens: 500,
       }),
     });
 
