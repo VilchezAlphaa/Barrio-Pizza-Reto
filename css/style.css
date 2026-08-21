@@ -14,6 +14,7 @@
   --wine-light:#A23347;
   --wine-deep:#4A0D18;
   --white-soft:rgba(255,255,255,.78);
+  --bone-blue:#E4E8F4;
   --brown:#3F231A;
   --cream:#F0E8E0;
   --bone:#f9f7f4;
@@ -598,9 +599,9 @@ table.orders-table tr:hover td{background:rgba(255,255,255,.02)}
 /* Cuadros de verdad: aspect-ratio en vez de min-height, así nunca se estiran en
    rectángulos — el alto siempre sigue al ancho de la columna. */
 .eventos-day{
-  aspect-ratio:1/1;border:1px solid rgba(162,51,71,.18);border-radius:10px;
+  aspect-ratio:1/1;border:1px solid rgba(162,51,71,.32);border-radius:10px;
   padding:.45rem .5rem;position:relative;cursor:pointer;
-  background:rgba(255,255,255,.015);
+  background:rgba(228,232,244,.05);
   display:flex;flex-direction:column;gap:.25rem;overflow:hidden;
   transition:transform .18s var(--ease-out-expo), border-color .18s, background .18s, box-shadow .18s;
 }
@@ -608,12 +609,12 @@ table.orders-table tr:hover td{background:rgba(255,255,255,.02)}
 .eventos-day:hover{
   transform:scale(1.035);
   border-color:var(--wine-light);
-  background:rgba(110,20,35,.09);
+  background:rgba(228,232,244,.09);
   box-shadow:0 6px 18px rgba(0,0,0,.3);
   z-index:2;
 }
 .eventos-day.outside{opacity:.28;cursor:default}
-.eventos-day.outside:hover{transform:none;box-shadow:none;border-color:rgba(162,51,71,.18);background:rgba(255,255,255,.015)}
+.eventos-day.outside:hover{transform:none;box-shadow:none;border-color:rgba(162,51,71,.32);background:rgba(228,232,244,.05)}
 .eventos-day.today{
   border-color:var(--wine-light);
   background:linear-gradient(160deg, rgba(110,20,35,.55), rgba(74,13,24,.4));
