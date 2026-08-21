@@ -24,13 +24,6 @@
   --gray-unknown:#6b6b6b;
   --plum-olvido:#b83280;
 
-  /* Colores por sucursal — solo para IDENTIFICAR de un vistazo qué sucursal es cuál.
-     A propósito no reusamos rojo/azul/verde/gris/morado: esos ya significan un estado
-     (semáforo de alertas) y mezclarlos confundiría "esto es Marbella" con "esto está mal". */
-  --suc-brisas:#2CA6A4;
-  --suc-costa:#8B5CF6;
-  --suc-marbella:#D4A017;
-  --suc-via:#E85D75;
 
   --font-display:'Anton', sans-serif;
   --font-mono:'JetBrains Mono', monospace;

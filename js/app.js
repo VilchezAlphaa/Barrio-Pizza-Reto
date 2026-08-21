@@ -38,21 +38,19 @@ function helpHint(texto) {
 }
 
 /* =========================================================
-   🎨 COLOR POR SUCURSAL — solo identifica "cuál sucursal es",
-   nunca reemplaza al semáforo de estado (ok/warn/crit/unknown/olvido).
+   Los puntos de sucursal ya NO llevan color propio — el color queda
+   reservado por completo para el semáforo de estado (ok/warn/crit/
+   unknown/olvido), así no compite visualmente con las alertas.
+   El punto se mantiene como marcador neutro; la sucursal se identifica
+   por el nombre en texto, que siempre lo acompaña.
    ========================================================= */
-const SUCURSAL_COLORS = {
-  'Brisas del Golf': 'var(--suc-brisas)',
-  'Costa del Este': 'var(--suc-costa)',
-  'Marbella': 'var(--suc-marbella)',
-  'Via Argentina': 'var(--suc-via)',
-};
-function sucursalColor(nombre) { return SUCURSAL_COLORS[nombre] || 'rgba(255,255,255,.4)'; }
-function sucDot(nombre) { return `<span class="suc-dot" style="background:${sucursalColor(nombre)}"></span>`; }
+const SUCURSAL_COLOR_NEUTRO = 'rgba(255,255,255,.35)';
+function sucursalColor(nombre) { return SUCURSAL_COLOR_NEUTRO; }
+function sucDot(nombre) { return `<span class="suc-dot" style="background:${SUCURSAL_COLOR_NEUTRO}"></span>`; }
 
-// Botón "¿Qué significan los colores?" — leyenda de sucursales + semáforo de estado, en un solo lugar.
+// Botón "¿Qué significa el color?" — ahora el color solo tiene un significado en todo
+// el dashboard: el semáforo de estado. Las sucursales se distinguen por su nombre.
 function colorLegendButton() {
-  const filas = Object.keys(SUCURSAL_COLORS).map(s => `<div class="legend-row">${sucDot(s)}${s}</div>`).join('');
   const estados = [
     ['ok', 'Pedido correcto'],
     ['warn', 'Sobre-pedido'],
@@ -61,8 +59,7 @@ function colorLegendButton() {
     ['unknown', 'No catalogado'],
   ].map(([k, label]) => `<div class="legend-row"><span class="status-dot ${k}"></span>${label}</div>`).join('');
   const texto = `
-    <div class="legend-title">Por sucursal</div>${filas}
-    <div class="legend-title">Por estado (semáforo)</div>${estados}
+    <div class="legend-title">Qué significa cada color</div>${estados}
   `;
   return `<span class="help-hint" tabindex="0" role="button" aria-label="Leyenda de colores"><span aria-hidden="true">🎨</span><span class="help-popover legend-popover">${texto}</span></span>`;
 }
