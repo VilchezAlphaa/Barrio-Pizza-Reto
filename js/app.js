@@ -9,6 +9,7 @@ let FILTRO_SUCURSAL = 'todas'; // pestaña activa del módulo "Sucursales" ('tod
 let FILTRO_SUCURSAL_INFORMES = 'todas'; // filtros propios del módulo "Informes" (independientes de los de arriba)
 let FILTRO_PROVEEDOR_INFORMES = 'todos';
 let FILTRO_ESTADO_INFORMES = 'todas';
+let FILTRO_SUCURSAL_HISTORICO = 'todas'; // filtro propio del panel "Historial de consumo" — no comparte estado con "Todos los pedidos" de arriba
 let SEMANA_INFORMES = null; // se fija a la última semana del histórico una vez cargan los datos
 let ORDENES_GRUPO_ABIERTO = { crit: true, olvido: true, warn: true, unknown: true, ok: false }; // estado de cada acordeón, persiste entre renders
 let ULTIMA_EDICION = {}; // `${sucursal}|${ingId}` -> timestamp del último cambio manual, para "elevar" ese ítem en su grupo
@@ -149,6 +150,7 @@ function wireTopbar() {
   // (ver settings-block en index.html), pero las acciones son las mismas.
   document.getElementById('opt-reset').addEventListener('click', reiniciarEdiciones);
   document.getElementById('opt-about').addEventListener('click', mostrarAcercaDe);
+  document.getElementById('opt-export-ajustes')?.addEventListener('click', exportarAjustesExcel);
 
   // La exportación (Excel/PDF general) vive únicamente en el módulo "Informes",
   // para no repetir la misma acción en dos lugares distintos del menú.
@@ -158,7 +160,6 @@ function wireTopbar() {
   document.getElementById('informes-export-ajustes-csv')?.addEventListener('click', exportarAjustesExcel);
   document.getElementById('informes-export-pedidos-csv')?.addEventListener('click', exportarPedidosFiltradosExcel);
   document.getElementById('informes-export-historico-csv')?.addEventListener('click', exportarHistoricoExcel);
-  wireInformesSubtabs();
 
   // Cerrar el modal de tendencia con Escape, igual que el modal "Acerca de"
   document.addEventListener('keydown', (e) => {
@@ -231,9 +232,10 @@ function tablaVisibleACSV(tableId) {
 }
 
 // Agrupado por proveedor (con encabezado propio por bloque) en vez de una sola tabla
-// plana gigante — mismo criterio de agrupación que antes tenía el CSV, pero ahora como
-// hoja de Excel con ancho de columna automático (autoCols), en vez de depender de que la
-// gerente autoajuste las columnas a mano al abrir un .csv.
+// plana gigante, y con una COLUMNA por sucursal (formato pivote) en vez de un texto tipo
+// "Costa del Este: 5 | Marbella: 10" metido en una sola celda — así ninguna fila esconde
+// datos detrás de otra al abrir el archivo en Excel/Sheets, cada número vive en su propia
+// celda.
 function exportarProveedorExcel() {
   const data = DataEngine.pedidoCorregidoPorProveedor(STATE, METODO_ACTUAL);
   const fecha = new Date().toLocaleDateString('es-PA');
@@ -248,15 +250,16 @@ function exportarProveedorExcel() {
   }
   proveedores.forEach(prov => {
     filas.push([prov.toUpperCase()]);
-    filas.push(['Ingrediente', 'Formato de compra', 'Cantidad a pedir', 'Detalle por sucursal']);
+    filas.push(['Ingrediente', 'Formato de compra', ...STATE.sucursales, 'Total a pedir']);
     Object.values(data[prov]).forEach(it => {
-      const detalle = it.detalle.map(d => `${d.sucursal}: ${d.formatos}`).join(' | ');
-      filas.push([it.nombre, it.formato, it.total, detalle]);
+      const porSucursal = {};
+      it.detalle.forEach(d => { porSucursal[d.sucursal] = d.formatos; });
+      filas.push([it.nombre, it.formato, ...STATE.sucursales.map(s => porSucursal[s] ?? ''), it.total]);
     });
     filas.push([]); // línea en blanco entre proveedores, para que se vea como bloques separados
   });
 
-  descargarExcelSimple(filas, `barrio-pizza-pedido-por-proveedor-${new Date().toISOString().split('T')[0]}.xlsx`, 'Por proveedor', 'Excel exportado — una fila por ingrediente, agrupado por proveedor.');
+  descargarExcelSimple(filas, `barrio-pizza-pedido-por-proveedor-${new Date().toISOString().split('T')[0]}.xlsx`, 'Por proveedor', 'Excel exportado — una fila por ingrediente, una columna por sucursal, agrupado por proveedor.');
 }
 
 function exportarAjustesExcel() {
@@ -284,19 +287,6 @@ function exportarHistoricoExcel() {
   if (filas.length < 2) { mostrarToast('No hay datos de consumo para esta semana/filtro.'); return; }
   filas.unshift(['BARRIO PIZZA - Historial de consumo'], [`Generado: ${new Date().toLocaleDateString('es-PA')}`], []);
   descargarExcelSimple(filas, `barrio-pizza-historico-${new Date().toISOString().split('T')[0]}.xlsx`, 'Historial', 'Excel de historial exportado.');
-}
-
-function wireInformesSubtabs() {
-  const cont = document.getElementById('informes-subtabs');
-  if (!cont || cont.dataset.wired) return;
-  cont.dataset.wired = '1';
-  cont.querySelectorAll('.subtab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const key = btn.dataset.subtab;
-      cont.querySelectorAll('.subtab-btn').forEach(b => b.classList.toggle('active', b === btn));
-      document.querySelectorAll('[data-subtab-panel]').forEach(p => p.classList.toggle('active', p.dataset.subtabPanel === key));
-    });
-  });
 }
 
 function mostrarToast(mensaje) {
@@ -1482,11 +1472,10 @@ function renderInformes() {
   renderSummaryBarInto('informes-summary-bar');
   const exportHelpSlot = document.getElementById('export-help-slot');
   if (exportHelpSlot && !exportHelpSlot.dataset.wired) {
-    exportHelpSlot.innerHTML = helpHint('CSV: una tabla simple por proveedor, para abrir en cualquier planilla. Excel: varias hojas (Resumen, Todas las alertas, etc.), ideal para revisar todo junto. PDF: listo para imprimir o enviar por WhatsApp/correo.');
+    exportHelpSlot.innerHTML = helpHint('Excel simple: una tabla por proveedor, en una sola hoja, para abrir rápido en cualquier planilla. Excel completo: varias hojas (Resumen, Todas las alertas, y una por proveedor), ideal para revisar todo junto antes de enviar. PDF: listo para imprimir o enviar por WhatsApp/correo. Cada tabla de abajo (Ajustes, Todos los pedidos, Historial de consumo) tiene además su propio botón de exportar CSV, ya con el filtro que le tengas puesto.');
     exportHelpSlot.dataset.wired = '1';
   }
   wireInformesFiltros();
-  wireInformesSubtabs();
   renderInformesEdiciones();
   renderInformesTablaCompleta();
   renderInformesHistorico();
@@ -1548,7 +1537,8 @@ function wireInformesFiltros() {
   const provSel = document.getElementById('informes-proveedor-select');
   const estSel = document.getElementById('informes-estado-select');
   const semSel = document.getElementById('informes-semana-select');
-  if (!sucSel || !provSel || !estSel || !semSel) return;
+  const sucHistSel = document.getElementById('informes-historico-sucursal-select');
+  if (!sucSel || !provSel || !estSel || !semSel || !sucHistSel) return;
 
   if (!sucSel.dataset.wired) {
     sucSel.innerHTML = ['todas', ...STATE.sucursales].map(s => `<option value="${s}">${s === 'todas' ? 'Todas las sucursales' : s}</option>`).join('');
@@ -1556,7 +1546,6 @@ function wireInformesFiltros() {
     sucSel.addEventListener('change', () => {
       FILTRO_SUCURSAL_INFORMES = sucSel.value;
       renderInformesTablaCompleta();
-      renderInformesHistorico();
     });
     sucSel.dataset.wired = '1';
   }
@@ -1585,6 +1574,19 @@ function wireInformesFiltros() {
       renderInformesTablaCompleta();
     });
     estSel.dataset.wired = '1';
+  }
+
+  // Filtro de sucursal PROPIO del panel "Historial de consumo" — a propósito no comparte
+  // estado con el filtro de sucursal de "Todos los pedidos" de arriba, para poder mirar/
+  // exportar el consumo de una sucursal específica sin afectar la otra tabla.
+  if (!sucHistSel.dataset.wired) {
+    sucHistSel.innerHTML = ['todas', ...STATE.sucursales].map(s => `<option value="${s}">${s === 'todas' ? 'Todas las sucursales' : s}</option>`).join('');
+    sucHistSel.value = FILTRO_SUCURSAL_HISTORICO;
+    sucHistSel.addEventListener('change', () => {
+      FILTRO_SUCURSAL_HISTORICO = sucHistSel.value;
+      renderInformesHistorico();
+    });
+    sucHistSel.dataset.wired = '1';
   }
 
   if (!semSel.dataset.wired) {
@@ -1644,7 +1646,7 @@ function renderInformesHistorico() {
 
   const filas = [];
   STATE.sucursales.forEach(suc => {
-    if (FILTRO_SUCURSAL_INFORMES !== 'todas' && suc !== FILTRO_SUCURSAL_INFORMES) return;
+    if (FILTRO_SUCURSAL_HISTORICO !== 'todas' && suc !== FILTRO_SUCURSAL_HISTORICO) return;
     const consumo = STATE.consumoPorSucIng[suc] || {};
     Object.keys(consumo).forEach(ingId => {
       const valor = (consumo[ingId] || {})[semana];

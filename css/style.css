@@ -233,6 +233,12 @@ table.orders-table tr:hover td{background:rgba(255,255,255,.02)}
 }
 .btn-mini:hover{background:rgba(207,47,44,.15);border-color:var(--red)}
 .informes-export-row{display:flex;flex-wrap:wrap;gap:.6rem}
+.informes-export-legend{
+  list-style:none;margin:1rem 0 0;padding:.8rem 1rem 0;display:flex;flex-direction:column;gap:.4rem;
+  border-top:1px dashed rgba(255,255,255,.1);
+}
+.informes-export-legend li{font-size:.76rem;color:rgba(255,255,255,.55);line-height:1.5}
+.informes-export-legend b{color:var(--white-soft)}
 #informes-full-table td.diff-up,
 #informes-ediciones-table td.diff-up{color:var(--green-ok);font-weight:600}
 #informes-full-table td.diff-down,

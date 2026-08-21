@@ -178,66 +178,41 @@
 <section class="module" data-module="informes" id="module-informes">
   <div class="page-header">
     <h2>Informes</h2>
-    <p class="text-muted">Control centralizado de pedidos, ajustes hechos por la gerente, historial de consumo y exportaciones — todo en un solo lugar.</p>
+    <p class="text-muted">Control centralizado de pedidos, ajustes hechos por la gerente, historial de consumo y exportaciones — cada tabla exporta su propio CSV con el filtro que le pongas, sin tener que subir a buscarlo.</p>
   </div>
 
   <div class="status-summary-bar" id="informes-summary-bar"></div>
 
   <div class="panel" style="margin:0 2rem 1.5rem">
     <div class="panel-header">
-      <span class="panel-title">⬇ Descargar informe<span id="export-help-slot"></span></span>
-      <span class="text-muted" style="font-size:.75rem">Cada pestaña descarga solo esa parte, ya con los filtros que tengas puestos</span>
+      <span class="panel-title">📦 Paquete completo para proveedores<span id="export-help-slot"></span></span>
+      <span class="text-muted" style="font-size:.75rem">El pedido corregido de todas las sucursales, ya agrupado por proveedor</span>
     </div>
-
-    <div class="subtabs" id="informes-subtabs">
-      <button class="subtab-btn active" data-subtab="general">General</button>
-      <button class="subtab-btn" data-subtab="ajustes">Ajustes de la gerente</button>
-      <button class="subtab-btn" data-subtab="pedidos">Todos los pedidos</button>
-      <button class="subtab-btn" data-subtab="historico">Historial de consumo</button>
+    <div class="informes-export-row">
+      <button class="btn-mini" id="informes-export-csv">📄 Excel simple (1 hoja)</button>
+      <button class="btn-mini" id="informes-export-excel">📊 Excel completo (multi-hoja)</button>
+      <button class="btn-mini" id="informes-export-pdf">🖨 PDF para imprimir</button>
     </div>
-
-    <div class="subtab-panel active" data-subtab-panel="general">
-      <p class="text-muted">El paquete completo, listo para enviar a los proveedores.</p>
-      <div class="informes-export-row">
-        <button class="btn-mini" id="informes-export-csv">⬇ Excel por proveedor</button>
-        <button class="btn-mini" id="informes-export-excel">Excel (multi-hoja)</button>
-        <button class="btn-mini" id="informes-export-pdf">PDF por proveedor</button>
-      </div>
-    </div>
-
-    <div class="subtab-panel" data-subtab-panel="ajustes">
-      <p class="text-muted">Solo lo que corregiste en "Sucursales" — la bitácora de cambios.</p>
-      <div class="informes-export-row">
-        <button class="btn-mini" id="informes-export-ajustes-csv">⬇ Excel de ajustes</button>
-      </div>
-    </div>
-
-    <div class="subtab-panel" data-subtab-panel="pedidos">
-      <p class="text-muted">La tabla "Todos los pedidos" de abajo, con el filtro de sucursal/proveedor/estado que tengas puesto ahí.</p>
-      <div class="informes-export-row">
-        <button class="btn-mini" id="informes-export-pedidos-csv">⬇ Excel de pedidos filtrados</button>
-      </div>
-    </div>
-
-    <div class="subtab-panel" data-subtab-panel="historico">
-      <p class="text-muted">Consumo real de la semana seleccionada abajo, por sucursal e ingrediente.</p>
-      <div class="informes-export-row">
-        <button class="btn-mini" id="informes-export-historico-csv">⬇ Excel de historial</button>
-      </div>
-    </div>
+    <ul class="informes-export-legend">
+      <li><b>Excel simple:</b> todos los proveedores en una sola hoja, por bloques — rápido de escanear o pegar en un mensaje.</li>
+      <li><b>Excel completo:</b> resumen por sucursal + todas las alertas + una hoja aparte por proveedor — el paquete entero para revisar antes de enviar.</li>
+      <li><b>PDF:</b> una página por proveedor, ya formateada para imprimir o mandar por WhatsApp/correo.</li>
+    </ul>
   </div>
 
   <div class="panel" style="margin:0 2rem 1.5rem">
     <div class="panel-header">
       <span class="panel-title">Ajustes hechos por la gerente <span class="badge-count" id="informes-ediciones-count">0</span></span>
-      <span class="text-muted" style="font-size:.75rem">Diferencia entre lo que pidió cada sucursal y lo que quedó después de tus correcciones en "Sucursales"</span>
+      <button class="btn-mini" id="informes-export-ajustes-csv">⬇ Exportar CSV</button>
     </div>
+    <p class="text-muted" style="margin:-.4rem 0 .8rem">Diferencia entre lo que pidió cada sucursal y lo que quedó después de tus correcciones en "Sucursales".</p>
     <div class="table-wrap"><table class="orders-table" id="informes-ediciones-table"></table></div>
   </div>
 
   <div class="panel" style="margin:0 2rem 1.5rem">
     <div class="panel-header">
       <span class="panel-title">Todos los pedidos</span>
+      <button class="btn-mini" id="informes-export-pedidos-csv">⬇ Exportar CSV filtrado</button>
     </div>
     <div class="toolbar" style="margin:0 0 1rem">
       <div class="toolbar-field">
@@ -266,8 +241,14 @@
   <div class="panel" style="margin:0 2rem 1.5rem">
     <div class="panel-header">
       <span class="panel-title">Historial de consumo (6 semanas)</span>
+      <button class="btn-mini" id="informes-export-historico-csv">⬇ Exportar CSV filtrado</button>
     </div>
+    <p class="text-muted" style="margin:-.4rem 0 .8rem">Filtra por sucursal y semana antes de exportar — independiente del filtro de "Todos los pedidos" de arriba.</p>
     <div class="toolbar" style="margin:0 0 1rem">
+      <div class="toolbar-field">
+        <label for="informes-historico-sucursal-select">Sucursal</label>
+        <select id="informes-historico-sucursal-select"></select>
+      </div>
       <div class="toolbar-field">
         <label for="informes-semana-select">Semana</label>
         <select id="informes-semana-select"></select>
@@ -279,6 +260,10 @@
   <div class="panel settings-block" style="margin:0 2rem 1.5rem">
     <div class="panel-header">
       <span class="panel-title">Ajustes</span>
+    </div>
+    <div class="settings-row">
+      <span>Exportar mis ajustes de esta semana (CSV)</span>
+      <button class="btn-mini" id="opt-export-ajustes">⬇ Exportar</button>
     </div>
     <div class="settings-row">
       <span>Reiniciar mis ediciones</span>
