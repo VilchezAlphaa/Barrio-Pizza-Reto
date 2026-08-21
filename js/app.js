@@ -776,6 +776,17 @@ function eventoBannerDetailedHTML(e) {
     <div class="evento-card-detalle">${bars}</div>
   ` : '';
 
+  // El consejo final se adapta según si el mayor cambio esperado es una ALZA (conviene
+  // reforzar el pedido, hay más demanda) o una BAJA (conviene no sobre-pedir) — nunca
+  // asume que "el cambio más grande" es automáticamente malo.
+  let consejo = '→ Sin suficiente data histórica todavía para sugerir un ajuste.';
+  if (filasOrdenadas.length) {
+    const top = filasOrdenadas[0];
+    consejo = top.v >= 0
+      ? `→ Revisa si conviene reforzar el pedido de esta semana antes de cerrarlo, especialmente en las sucursales con mayor alza esperada (ej. ${top.suc}, +${round1(top.v)}%).`
+      : `→ Revisa si conviene ajustar el pedido a la baja en las sucursales más afectadas por la caída esperada (ej. ${top.suc}, ${round1(top.v)}%), para no sobre-pedir.`;
+  }
+
   return `
     <div class="alert-card info evento-banner evento-banner-detailed" style="animation-delay:0s">
       <div class="alert-top">
@@ -785,7 +796,7 @@ function eventoBannerDetailedHTML(e) {
         <b>${e.nombre}</b> (${e.categoria}) — ${impacto}.
       </div>
       ${desglose}
-      <div class="accion-sugerida">→ Revisa si conviene reforzar el pedido de esta semana antes de cerrarlo, especialmente en las sucursales más afectadas.</div>
+      <div class="accion-sugerida">${consejo}</div>
     </div>
   `;
 }

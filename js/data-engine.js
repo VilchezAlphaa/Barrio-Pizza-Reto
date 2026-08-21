@@ -113,18 +113,24 @@ const DataEngine = (function () {
 
     return Object.values(porNombre).map(e => {
       const ordenadas = Object.entries(e.porSucursal).sort((a, b) => b[1] - a[1]);
-      const masAfectada = ordenadas[0] || null;
-      const menosAfectada = ordenadas[ordenadas.length - 1] || null;
+      // Ojo: esto es "el cambio más grande en magnitud", que puede ser una SUBIDA (buena
+      // noticia, más ventas) o una BAJADA (mala noticia) — nunca asumas que es negativo.
+      // Por eso NO se llama "masAfectada": ese nombre sugería siempre algo malo, incluso
+      // cuando el número era una alza positiva (el asistente de IA llegó a heredar esa
+      // confusión literalmente). El texto correcto (alza/beneficiada vs baja/afectada) se
+      // arma en el momento de mostrarlo, según el signo — ver signoImpacto() más abajo.
+      const mayorImpacto = ordenadas[0] || null;
+      const menorImpacto = ordenadas[ordenadas.length - 1] || null;
       return {
         nombre: e.nombre,
         categoria: e.categoria,
         fecha: e.fecha, // fecha de referencia (año en que se simuló, se usa solo el mes/día)
         porSucursal: e.porSucursal,
         alzaPromedio: mean(e.alzas),
-        sucursalMasAfectada: masAfectada ? masAfectada[0] : null,
-        alzaMasAfectada: masAfectada ? masAfectada[1] : null,
-        sucursalMenosAfectada: menosAfectada ? menosAfectada[0] : null,
-        alzaMenosAfectada: menosAfectada ? menosAfectada[1] : null,
+        sucursalMayorImpacto: mayorImpacto ? mayorImpacto[0] : null,
+        impactoMayorPct: mayorImpacto ? mayorImpacto[1] : null,
+        sucursalMenorImpacto: menorImpacto ? menorImpacto[0] : null,
+        impactoMenorPct: menorImpacto ? menorImpacto[1] : null,
       };
     }).sort((a, b) => a.fecha.localeCompare(b.fecha));
   }
@@ -185,8 +191,8 @@ const DataEngine = (function () {
     const valores = Object.values(porSucursal);
     const tieneEstimado = valores.length > 0;
     const ordenadas = Object.entries(porSucursal).sort((a, b) => b[1] - a[1]);
-    const masAfectada = ordenadas[0] || null;
-    const menosAfectada = ordenadas[ordenadas.length - 1] || null;
+    const mayorImpacto = ordenadas[0] || null;
+    const menorImpacto = ordenadas[ordenadas.length - 1] || null;
     return {
       id: r.id,
       nombre: r.nombre,
@@ -198,10 +204,10 @@ const DataEngine = (function () {
       porSucursal,
       alzaPromedio: tieneEstimado ? mean(valores) : 0,
       sinEstimado: !tieneEstimado,
-      sucursalMasAfectada: masAfectada ? masAfectada[0] : null,
-      alzaMasAfectada: masAfectada ? masAfectada[1] : null,
-      sucursalMenosAfectada: menosAfectada ? menosAfectada[0] : null,
-      alzaMenosAfectada: menosAfectada ? menosAfectada[1] : null,
+      sucursalMayorImpacto: mayorImpacto ? mayorImpacto[0] : null,
+      impactoMayorPct: mayorImpacto ? mayorImpacto[1] : null,
+      sucursalMenorImpacto: menorImpacto ? menorImpacto[0] : null,
+      impactoMenorPct: menorImpacto ? menorImpacto[1] : null,
     };
   }
 
@@ -644,11 +650,19 @@ const DataEngine = (function () {
       // Calendario de eventos (data sintética de referencia, ver módulo "Eventos"):
       // permite responder preguntas como "¿cuándo es el próximo evento?" o "¿cuánto
       // sube históricamente Halloween en Marbella?".
-      proximos_eventos: calendarioEventos(state).slice(0, 6).map(e => ({
-        evento: e.nombre, categoria: e.categoria, dias_faltantes: e.diasFaltantes,
-        alza_historica_promedio_pct: round2(e.alzaPromedio),
-        sucursal_mas_afectada: e.sucursalMasAfectada, alza_sucursal_mas_afectada_pct: round2(e.alzaMasAfectada),
-      })),
+      proximos_eventos: calendarioEventos(state).slice(0, 6).map(e => {
+        const et = etiquetaImpacto(e.impactoMayorPct);
+        return {
+          evento: e.nombre, categoria: e.categoria, dias_faltantes: e.diasFaltantes,
+          alza_historica_promedio_pct: round2(e.alzaPromedio),
+          // "cambio_pct" puede ser positivo (alza, buena noticia) o negativo (baja, mala
+          // noticia) — "direccion" ya lo indica en palabras para que nunca se describa
+          // una alza como si fuera un daño ("afectada" solo aplica si direccion es "baja").
+          sucursal_mayor_cambio: e.sucursalMayorImpacto,
+          cambio_pct_sucursal_mayor_cambio: round2(e.impactoMayorPct),
+          direccion_sucursal_mayor_cambio: et.direccion, // 'alza' | 'baja' | 'sin cambio'
+        };
+      }),
     };
   }
 
@@ -689,11 +703,24 @@ const DataEngine = (function () {
   };
   function descripcionMetodo(key) { return DESCRIPCION_METODOS[key] || ''; }
 
+  // ---------- Lenguaje correcto para subas/bajas (evita decir "afectada" cuando es alza) ----------
+  //
+  // Un cambio % puede ser positivo (más ventas — buena noticia) o negativo (menos ventas
+  // — mala noticia). El mismo número nunca debe describirse con la misma palabra en ambos
+  // casos: "afectada" implica daño, así que solo aplica cuando el cambio es negativo (baja).
+  // Cuando es positivo, la sucursal está "beneficiada" por una "alza", no "afectada".
+  function etiquetaImpacto(pct) {
+    if (pct == null || isNaN(pct)) return { direccion: 'sin dato', verbo: 'impactada', sustantivo: 'cambio' };
+    if (pct > 0) return { direccion: 'alza', verbo: 'beneficiada', sustantivo: 'alza' };
+    if (pct < 0) return { direccion: 'baja', verbo: 'afectada', sustantivo: 'baja' };
+    return { direccion: 'sin cambio', verbo: 'estable', sustantivo: 'cambio' };
+  }
+
   return {
     loadAll, build, proyeccionesPara, evaluarFila, todasLasFilas,
     alertasOlvido, anomaliasEntreSucursales, pedidoCorregidoPorProveedor,
     resumenParaChat, seriesFor, WEEK_ORDER, accionSugerida, accionSugeridaOlvido,
-    descripcionMetodo,
+    descripcionMetodo, etiquetaImpacto,
     calendarioEventos, eventoProximo, eventosProximos, proximaOcurrencia, diasHasta,
     eventosEnMes, todosLosEventos, eventosPersonalizados,
     crearEventoPersonalizado, eliminarEventoPersonalizado,
