@@ -531,6 +531,14 @@ function mostrarTendencia(sucursal, ingId) {
   const unidad = cat ? cat.unidad_base : '';
   const nombre = cat ? cat.nombre : ingId;
 
+  const diferencia = round1(proy.recomendada - stock);
+  const diffTxt = diferencia > 0
+    ? `Faltan <b>${diferencia} ${unidad}</b> por pedir`
+    : diferencia < 0
+      ? `Sobran <b>${Math.abs(diferencia)} ${unidad}</b> respecto a lo proyectado`
+      : `Stock justo a lo proyectado`;
+  const diffClass = diferencia > 0 ? 'crit' : diferencia < 0 ? 'warn' : 'ok';
+
   const modal = document.createElement('div');
   modal.id = 'trend-modal';
   modal.className = 'about-modal-overlay';
@@ -540,10 +548,17 @@ function mostrarTendencia(sucursal, ingId) {
       <h3>${nombre}</h3>
       <p class="text-muted" style="margin-bottom:1rem">${sucursal} · consumo de las últimas 6 semanas + proyección</p>
       <div class="chart-canvas-wrap"><canvas id="trend-canvas"></canvas></div>
-      <div class="trend-legend text-muted">
-        Stock actual: <b>${round1(stock)} ${unidad}</b> ·
-        Proyección recomendada: <b>${round1(proy.recomendada)} ${unidad}</b>
+      <div class="trend-stats">
+        <div class="trend-stat">
+          <span class="trend-stat-label">Stock actual</span>
+          <span class="trend-stat-value">${round1(stock)} <small>${unidad}</small></span>
+        </div>
+        <div class="trend-stat">
+          <span class="trend-stat-label">Proyección recomendada</span>
+          <span class="trend-stat-value">${round1(proy.recomendada)} <small>${unidad}</small></span>
+        </div>
       </div>
+      <div class="trend-diff trend-diff-${diffClass}">${diffTxt}</div>
     </div>
   `;
   document.body.appendChild(modal);
@@ -576,13 +591,21 @@ function mostrarTendencia(sucursal, ingId) {
         {
           label: 'Stock actual', data: labels.map(() => stock),
           borderColor: 'rgba(47,158,81,.7)', borderDash: [6, 4],
-          pointRadius: 0, fill: false,
+          pointRadius: 0, pointStyle: 'dash', fill: false,
         },
       ],
     },
     options: {
       responsive: true,
-      plugins: { legend: { position: 'bottom', labels: { color: '#fff', font: { family: 'JetBrains Mono', size: 10 } } } },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: 'rgba(255,255,255,.75)', font: { family: 'JetBrains Mono', size: 10 },
+            usePointStyle: true, boxWidth: 8, boxHeight: 8, padding: 16,
+          },
+        },
+      },
       scales: {
         x: { ticks: { color: 'rgba(255,255,255,.6)' }, grid: { color: 'rgba(255,255,255,.06)' } },
         y: { ticks: { color: 'rgba(255,255,255,.6)' }, grid: { color: 'rgba(255,255,255,.06)' }, beginAtZero: true },
@@ -1297,7 +1320,7 @@ function renderOrdersTable() {
                         data-suc="${f.sucursal}" data-ing="${f.ingId}" ${!f.factor ? 'disabled' : ''} />
                       <div class="text-muted" style="font-size:.65rem;margin-top:.2rem">${f.formato || ''}${f.pedidoBase != null ? ' = ' + round1(f.pedidoBase) + ' ' + (f.unidad || '') : ''}</div>
                     </td>
-                    <td><span class="alert-tag" style="background:none;border:1px solid rgba(255,255,255,.2)">${estadoLabel(f)}</span></td>
+                    <td><span class="estado-tag ${f.status}">${estadoLabel(f)}</span></td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -1632,7 +1655,7 @@ function renderInformesTablaCompleta() {
           <td>${f.pedidoBase != null ? round1(f.pedidoBase) + ' ' + (f.unidad || '') : (f.pedido + ' (sin catálogo)')}</td>
           <td>${f.proyeccion != null ? round1(f.proyeccion) : '—'}</td>
           <td>${f.stock != null ? round1(f.stock) : '—'}</td>
-          <td><span class="alert-tag" style="background:none;border:1px solid rgba(255,255,255,.2)">${estadoLabel(f)}</span></td>
+          <td><span class="estado-tag ${f.status}">${estadoLabel(f)}</span></td>
         </tr>
       `).join('')}
     </tbody>
