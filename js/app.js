@@ -524,11 +524,15 @@ function mostrarTendencia(sucursal, ingId) {
 
   const cat = STATE.catalogo[ingId];
   const proy = DataEngine.proyeccionesPara(STATE, sucursal, ingId);
+  // Usa el mismo método que está activo en el filtro de arriba, para que la gráfica
+  // siempre cuadre con lo que se ve en la tabla/alertas — nunca un número distinto.
+  const metodoActivo = METODOS.find(m => m.key === METODO_ACTUAL) || METODOS[METODOS.length - 1];
+  const valorProyectado = proy[METODO_ACTUAL] ?? proy.recomendada;
   const stock = ((STATE.inventario[sucursal] || {})[ingId]) ?? 0;
   const unidad = cat ? cat.unidad_base : '';
   const nombre = cat ? cat.nombre : ingId;
 
-  const diferencia = round1(proy.recomendada - stock);
+  const diferencia = round1(valorProyectado - stock);
   const diffTxt = diferencia > 0
     ? `Faltan <b>${diferencia} ${unidad}</b> por pedir`
     : diferencia < 0
@@ -543,7 +547,7 @@ function mostrarTendencia(sucursal, ingId) {
     <div class="about-modal-box trend-modal-box">
       <button class="about-modal-close" id="trend-modal-close">&times;</button>
       <h3>${nombre}</h3>
-      <p class="text-muted" style="margin-bottom:1rem">${sucursal} · consumo de las últimas 6 semanas + proyección</p>
+      <p class="text-muted" style="margin-bottom:1rem">${sucursal} · consumo de las últimas 6 semanas + proyección (método: <b>${metodoActivo.label}</b>)</p>
       <div class="chart-canvas-wrap"><canvas id="trend-canvas"></canvas></div>
       <div class="trend-stats">
         <div class="trend-stat">
@@ -551,8 +555,8 @@ function mostrarTendencia(sucursal, ingId) {
           <span class="trend-stat-value">${round1(stock)} <small>${unidad}</small></span>
         </div>
         <div class="trend-stat">
-          <span class="trend-stat-label">Proyección recomendada</span>
-          <span class="trend-stat-value">${round1(proy.recomendada)} <small>${unidad}</small></span>
+          <span class="trend-stat-label">Proyección (${metodoActivo.label})</span>
+          <span class="trend-stat-value">${round1(valorProyectado)} <small>${unidad}</small></span>
         </div>
       </div>
       <div class="trend-diff trend-diff-${diffClass}">${diffTxt}</div>
@@ -567,7 +571,7 @@ function mostrarTendencia(sucursal, ingId) {
   const labels = [...DataEngine.WEEK_ORDER, 'Proyección'];
   const historico = [...proy.serie, null];
   const proyectado = new Array(proy.serie.length).fill(null);
-  proyectado.push(proy.recomendada);
+  proyectado.push(valorProyectado);
 
   const ctx = document.getElementById('trend-canvas').getContext('2d');
   TREND_CHART = new Chart(ctx, {
@@ -581,7 +585,7 @@ function mostrarTendencia(sucursal, ingId) {
           tension: 0.25, spanGaps: false, pointRadius: 4,
         },
         {
-          label: 'Proyección recomendada', data: proyectado,
+          label: `Proyección (${metodoActivo.label})`, data: proyectado,
           borderColor: '#CF2F2C', backgroundColor: '#CF2F2C',
           pointRadius: 6, pointStyle: 'rectRot', showLine: false,
         },
