@@ -6,8 +6,9 @@
 //   GROQAPIKEY = ...
 // (se consigue gratis, sin tarjeta de crédito, en https://console.groq.com)
 //
-// Modelo: llama-3.3-70b-versatile — disponible en el tier gratuito de Groq
-// (14,400 requests/día), rápido y sin costo.
+// Modelo: openai/gpt-oss-120b — Groq deprecó llama-3.3-70b-versatile
+// (retirado el 16 de agosto de 2026); este es el reemplazo recomendado
+// por Groq, disponible en el tier gratuito.
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -55,7 +56,7 @@ ${JSON.stringify(contexto)}`;
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: question },
