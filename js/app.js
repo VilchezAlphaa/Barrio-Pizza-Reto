@@ -736,7 +736,7 @@ function eventoBannerCompactHTML(e) {
 function eventoBannerDetailedHTML(e) {
   const impacto = e.sinEstimado
     ? `sin estimado histórico todavía (evento nuevo)`
-    : `alza histórica promedio de <b>${e.alzaPromedio >= 0 ? '+' : ''}${round1(e.alzaPromedio)}%</b> en ventas`;
+    : `${e.alzaPromedio >= 0 ? 'alza' : 'baja'} histórica promedio de <b>${e.alzaPromedio >= 0 ? '+' : ''}${round1(e.alzaPromedio)}%</b> en ventas`;
 
   const filasOrdenadas = STATE.sucursales
     .map(s => ({ suc: s, v: e.porSucursal[s] }))
@@ -806,7 +806,7 @@ function renderEventos() {
 
   const helpSlot = document.getElementById('eventos-help-slot');
   if (helpSlot && !helpSlot.dataset.wired) {
-    helpSlot.innerHTML = helpHint('El % de alza se calculó comparando el índice de ventas de la semana del evento contra el promedio de las semanas normales alrededor, por sucursal — no es un número inventado a ojo. Los eventos que agregues tú no tienen ese cálculo hasta que pase al menos una edición y se pueda comparar contra lo normal.');
+    helpSlot.innerHTML = helpHint('El % de alza o baja se calculó comparando el índice de ventas de la semana del evento contra el promedio de las semanas normales alrededor, por sucursal — no es un número inventado a ojo. Los eventos que agregues tú no tienen ese cálculo hasta que pase al menos una edición y se pueda comparar contra lo normal.');
     helpSlot.dataset.wired = '1';
   }
 
@@ -832,7 +832,7 @@ function renderEventos() {
         `;
       }).join('');
 
-      const alzaTxt = e.sinEstimado ? `<span class="evento-card-alza-label">sin estimado</span>` : `${positivo ? '+' : ''}${round1(e.alzaPromedio)}%<span class="evento-card-alza-label">alza promedio</span>`;
+      const alzaTxt = e.sinEstimado ? `<span class="evento-card-alza-label">sin estimado</span>` : `${positivo ? '+' : ''}${round1(e.alzaPromedio)}%<span class="evento-card-alza-label">${positivo ? 'alza' : 'baja'} promedio</span>`;
       const badge = e.base ? `<span class="evento-card-badge base">Oficial</span>` : `<span class="evento-card-badge custom">Personalizado</span>`;
       const borrar = e.base ? '' : `<button class="evento-card-delete" data-borrar-evento="${e.id}" type="button">🗑 Borrar</button>`;
 

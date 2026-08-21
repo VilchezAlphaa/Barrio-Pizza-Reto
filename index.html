@@ -154,10 +154,13 @@
       personalizado para editarlo o borrarlo, o clic en un día vacío para crear uno nuevo ahí.
     </p>
     <div class="eventos-month-nav" id="eventos-month-nav">
-      <button class="eventos-month-arrow" id="eventos-month-prev" type="button" aria-label="Mes anterior">←</button>
-      <span class="eventos-month-label" id="eventos-month-label"></span>
-      <button class="eventos-month-arrow" id="eventos-month-next" type="button" aria-label="Mes siguiente">→</button>
-      <button class="link-btn" id="eventos-month-today" type="button">Hoy</button>
+      <button class="eventos-month-today-ghost" aria-hidden="true" tabindex="-1">Hoy</button>
+      <div class="eventos-month-center">
+        <button class="eventos-month-arrow" id="eventos-month-prev" type="button" aria-label="Mes anterior">←</button>
+        <span class="eventos-month-label" id="eventos-month-label"></span>
+        <button class="eventos-month-arrow" id="eventos-month-next" type="button" aria-label="Mes siguiente">→</button>
+      </div>
+      <button class="eventos-month-today" id="eventos-month-today" type="button">Hoy</button>
     </div>
     <div class="eventos-grid-weekdays" id="eventos-grid-weekdays"></div>
     <div class="eventos-grid" id="eventos-grid"></div>
