@@ -141,17 +141,106 @@ const DataEngine = (function () {
     return porSucursal;
   }
 
+  // ---------- Eventos personalizados (persistidos en localStorage) ----------
+  //
+  // La base "oficial" de eventos (feriados de ley, fechas comerciales fuertes en
+  // Panamá) sigue viniendo de eventos_historicos.csv — esos no se editan ni se
+  // borran desde la interfaz porque son el calendario de referencia del país.
+  // Lo que se agrega acá es una segunda fuente, 100% del lado del navegador (este
+  // proyecto es estático, sin backend — ver README), para que la gerente pueda
+  // anotar SUS propios eventos futuros (una promo, la apertura de una sucursal,
+  // un evento local puntual) y que queden guardados de verdad entre visitas,
+  // en vez de perderse al recargar la página.
+  const EVENTOS_LS_KEY = 'barrioPizza.eventosPersonalizados.v1';
+
+  function _leerPersonalizadosRaw() {
+    try {
+      const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(EVENTOS_LS_KEY) : null;
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (err) {
+      return []; // localStorage no disponible o data corrupta — no se rompe el dashboard
+    }
+  }
+
+  function _guardarPersonalizadosRaw(arr) {
+    try {
+      localStorage.setItem(EVENTOS_LS_KEY, JSON.stringify(arr));
+      return true;
+    } catch (err) {
+      return false; // ej. localStorage lleno o bloqueado (modo incógnito estricto)
+    }
+  }
+
+  function _normalizarPersonalizado(r) {
+    const tieneEstimado = r.alzaPromedio !== null && r.alzaPromedio !== undefined && r.alzaPromedio !== '';
+    return {
+      id: r.id,
+      nombre: r.nombre,
+      categoria: r.categoria || 'Personalizado',
+      fecha: r.fecha, // 'YYYY-MM-DD'
+      recurrente: !!r.recurrente,
+      notas: r.notas || '',
+      base: false,
+      porSucursal: {},
+      alzaPromedio: tieneEstimado ? Number(r.alzaPromedio) : 0,
+      sinEstimado: !tieneEstimado,
+      sucursalMasAfectada: null, alzaMasAfectada: null,
+      sucursalMenosAfectada: null, alzaMenosAfectada: null,
+    };
+  }
+
+  // Catálogo completo de eventos personalizados guardados, ya normalizados con la
+  // misma forma que los eventos "oficiales" de buildEventos(), para que el resto
+  // del motor (calendario, banner, vista de mes) no tenga que distinguir el origen.
+  function eventosPersonalizados() {
+    return _leerPersonalizadosRaw().map(_normalizarPersonalizado);
+  }
+
+  function crearEventoPersonalizado(datos) {
+    if (!datos || !datos.nombre || !datos.fecha) return null;
+    const arr = _leerPersonalizadosRaw();
+    const id = 'custom:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    arr.push({
+      id,
+      nombre: String(datos.nombre).trim(),
+      categoria: datos.categoria || 'Personalizado',
+      fecha: datos.fecha,
+      recurrente: !!datos.recurrente,
+      alzaPromedio: (datos.alzaPromedio === '' || datos.alzaPromedio === undefined) ? null : datos.alzaPromedio,
+      notas: datos.notas || '',
+    });
+    _guardarPersonalizadosRaw(arr);
+    return id;
+  }
+
+  function eliminarEventoPersonalizado(id) {
+    const arr = _leerPersonalizadosRaw().filter(e => e.id !== id);
+    _guardarPersonalizadosRaw(arr);
+  }
+
+  // Une la base oficial (state.eventos, viene del CSV) con los personalizados
+  // guardados en localStorage — esta es la lista que consume todo lo demás.
+  function todosLosEventos(state) {
+    const oficiales = (state.eventos || []).map(e => Object.assign(
+      { id: 'base:' + e.nombre, base: true, recurrente: true, sinEstimado: false, notas: '' }, e
+    ));
+    return oficiales.concat(eventosPersonalizados());
+  }
+
   // ---------- Calendario de eventos: próxima ocurrencia y cuenta regresiva ----------
   //
-  // Los eventos se guardaron con una fecha de referencia (el año en que se simuló la
-  // data), pero son fechas que se repiten cada año (San Valentín, Independencia...).
-  // Estas funciones toman el mes/día de esa fecha y calculan cuándo cae la PRÓXIMA
-  // ocurrencia a partir de "hoy" (o de la fecha que se le pase), para poder avisar
-  // con anticipación sin importar en qué año se esté ejecutando el dashboard.
+  // La mayoría de los eventos (feriados de ley, fechas comerciales, y los
+  // personalizados marcados "recurrente") se repiten cada año — se guardan con
+  // una fecha de referencia y estas funciones calculan cuándo cae la PRÓXIMA
+  // ocurrencia a partir de "hoy" (o de la fecha que se le pase), sin importar en
+  // qué año corra el dashboard. Un evento personalizado NO recurrente (una fecha
+  // puntual, una sola vez) usa su fecha exacta tal cual, sin repetirse el año siguiente.
 
-  function proximaOcurrencia(fechaRef, desde) {
+  function proximaOcurrencia(fechaRef, desde, recurrente) {
     const partes = String(fechaRef).split('-').map(Number);
-    const mes = partes[1], dia = partes[2];
+    const anio = partes[0], mes = partes[1], dia = partes[2];
+    if (recurrente === false) return new Date(anio, mes - 1, dia);
     const hoy = desde ? new Date(desde) : new Date();
     const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
     let candidata = new Date(hoy0.getFullYear(), mes - 1, dia);
@@ -166,20 +255,50 @@ const DataEngine = (function () {
     return Math.round((f0 - hoy0) / 86400000);
   }
 
-  // Devuelve el catálogo completo de eventos, cada uno con su próxima fecha real y
-  // los días que faltan, ordenado del más próximo al más lejano (para el calendario).
+  // Devuelve los eventos (oficiales + personalizados) que todavía no han pasado,
+  // cada uno con su próxima fecha real y los días que faltan, ordenados del más
+  // próximo al más lejano — esta es la lista para "Próximos eventos" y el banner.
   function calendarioEventos(state, desde) {
-    return (state.eventos || []).map(e => {
-      const proximaFecha = proximaOcurrencia(e.fecha, desde);
+    return todosLosEventos(state).map(e => {
+      const proximaFecha = proximaOcurrencia(e.fecha, desde, e.recurrente);
       return Object.assign({}, e, { proximaFecha, diasFaltantes: diasHasta(proximaFecha, desde) });
-    }).sort((a, b) => a.diasFaltantes - b.diasFaltantes);
+    }).filter(e => e.diasFaltantes >= 0).sort((a, b) => a.diasFaltantes - b.diasFaltantes);
   }
 
-  // El evento (si hay alguno) que cae dentro de los próximos `diasVentana` días —
-  // es lo que dispara el banner de aviso en el módulo Resumen.
+  // Los eventos que caen dentro de los próximos `diasVentana` días — cuenta
+  // regresiva día a día (7, 6, 5... días) para el/los banner(s) de aviso en
+  // Resumen. `limite` corta cuántos se muestran a la vez (por defecto, todos).
+  function eventosProximos(state, diasVentana, desde, limite) {
+    const dentro = calendarioEventos(state, desde).filter(e => e.diasFaltantes <= diasVentana);
+    return typeof limite === 'number' ? dentro.slice(0, limite) : dentro;
+  }
+
+  // El evento más próximo dentro de la ventana — se mantiene por compatibilidad
+  // con el resto del código; internamente ahora es el primero de eventosProximos().
   function eventoProximo(state, diasVentana, desde) {
-    const cal = calendarioEventos(state, desde);
-    return cal.find(e => e.diasFaltantes >= 0 && e.diasFaltantes <= diasVentana) || null;
+    return eventosProximos(state, diasVentana, desde, 1)[0] || null;
+  }
+
+  // Eventos (oficiales + personalizados) que caen dentro de un mes calendario
+  // específico (year, month 0-indexado) — esto es lo que arma la grilla del
+  // calendario mensual, a diferencia de calendarioEventos() que solo mira "lo
+  // próximo". Un evento recurrente aparece en ese mes todos los años; uno
+  // personalizado no-recurrente solo aparece en el año/mes exacto en que se creó.
+  function eventosEnMes(state, year, month, desde) {
+    const out = [];
+    todosLosEventos(state).forEach(e => {
+      const partes = String(e.fecha).split('-').map(Number);
+      const anioRef = partes[0], mes = partes[1], dia = partes[2];
+      const cae = e.recurrente === false
+        ? (anioRef === year && (mes - 1) === month)
+        : ((mes - 1) === month);
+      if (!cae) return;
+      const fechaEnMes = new Date(year, month, dia);
+      out.push(Object.assign({}, e, {
+        fechaEnMes, diaDelMes: dia, diasFaltantes: diasHasta(fechaEnMes, desde),
+      }));
+    });
+    return out.sort((a, b) => a.diaDelMes - b.diaDelMes);
   }
 
   // ---------- Estadística: proyección ----------
@@ -554,6 +673,8 @@ const DataEngine = (function () {
     alertasOlvido, anomaliasEntreSucursales, pedidoCorregidoPorProveedor,
     resumenParaChat, seriesFor, WEEK_ORDER, accionSugerida, accionSugeridaOlvido,
     descripcionMetodo,
-    calendarioEventos, eventoProximo, proximaOcurrencia, diasHasta,
+    calendarioEventos, eventoProximo, eventosProximos, proximaOcurrencia, diasHasta,
+    eventosEnMes, todosLosEventos, eventosPersonalizados,
+    crearEventoPersonalizado, eliminarEventoPersonalizado,
   };
 })();

@@ -92,6 +92,7 @@ async function init() {
 
   wireTopbar();
   wireHelpHints();
+  wireEventosMes();
   renderMethodPills();
   renderAll();
 
@@ -711,11 +712,20 @@ function renderResumen() {
 
 /* ---------------- Módulo Eventos: calendario + banner de aviso ---------------- */
 //
-// Fuente: state.eventos (armado en DataEngine a partir de eventos_historicos.csv,
-// data SINTÉTICA DE REFERENCIA). DataEngine.calendarioEventos() calcula la próxima
-// ocurrencia real de cada fecha (mes/día se repite cada año) y cuántos días faltan.
+// Fuentes: state.eventos (armado en DataEngine a partir de eventos_historicos.csv —
+// el calendario "oficial" de feriados de ley y fechas comerciales de Panamá) MÁS
+// los eventos personalizados que la gerente va creando desde la interfaz, que se
+// guardan en localStorage (DataEngine.crearEventoPersonalizado / eliminarEventoPersonalizado)
+// para que persistan entre visitas sin necesitar backend. DataEngine.calendarioEventos()
+// calcula la próxima ocurrencia real de cada uno (mes/día se repite cada año, salvo los
+// personalizados marcados como "una sola vez") y cuántos días faltan.
 
 const VENTANA_AVISO_DIAS = 7; // a partir de cuántos días antes aparece el banner
+const CATEGORIAS_EVENTO = ['Feriado nacional', 'Feriado local', 'Fecha comercial', 'Fecha deportiva', 'Estacional', 'Personalizado'];
+const NOMBRES_MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const NOMBRES_DIA_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+let EVENTOS_MES_VISTA = new Date(new Date().getFullYear(), new Date().getMonth(), 1); // mes que muestra la grilla
 
 function eventCountdownLabel(dias) {
   if (dias === 0) return 'HOY';
@@ -723,35 +733,45 @@ function eventCountdownLabel(dias) {
   return `EN ${dias} DÍAS`;
 }
 
+function fechaISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function eventoBannerHTML(e) {
   const suc = e.sucursalMasAfectada;
   const sucTxt = suc ? ` — la más afectada históricamente es <b>${suc}</b> (+${round1(e.alzaMasAfectada)}%)` : '';
+  const impacto = e.sinEstimado
+    ? `sin estimado histórico todavía (evento nuevo)`
+    : `alza histórica promedio de <b>${e.alzaPromedio >= 0 ? '+' : ''}${round1(e.alzaPromedio)}%</b> en ventas${sucTxt}`;
   return `
     <div class="alert-card info evento-banner" style="animation-delay:0s">
       <div class="alert-top">
         <span class="alert-tag">PRÓXIMO EVENTO · ${eventCountdownLabel(e.diasFaltantes)}</span>
-        <button class="link-btn" id="evento-banner-ir" type="button">Ver en Eventos →</button>
+        <button class="link-btn evento-banner-ir" type="button" data-ir-eventos="1">Ver en Eventos →</button>
       </div>
       <div class="alert-msg">
-        <b>${e.nombre}</b> (${e.categoria}) — alza histórica promedio de <b>+${round1(e.alzaPromedio)}%</b> en ventas${sucTxt}.
+        <b>${e.nombre}</b> (${e.categoria}) — ${impacto}.
       </div>
       <div class="accion-sugerida">→ Revisa si conviene reforzar el pedido de esta semana antes de cerrarlo, especialmente en las sucursales más afectadas.</div>
     </div>
   `;
 }
 
-// Rellena el aviso en Resumen y (opcionalmente) en el propio módulo Eventos —
+// Rellena el/los aviso(s) en Resumen y (opcionalmente) en el propio módulo Eventos —
 // usa la misma tarjeta en los dos lugares para no duplicar el criterio de "cuándo avisar".
+// Muestra hasta 2 eventos si hay más de uno aproximándose dentro de la ventana (ej. una
+// fecha comercial y un feriado nacional cayendo la misma semana).
 function renderEventBanner() {
-  const evento = DataEngine.eventoProximo(STATE, VENTANA_AVISO_DIAS);
-  const html = evento ? eventoBannerHTML(evento) : '';
+  const eventos = DataEngine.eventosProximos(STATE, VENTANA_AVISO_DIAS, null, 2);
+  const html = eventos.map(eventoBannerHTML).join('');
   ['evento-banner-slot', 'evento-banner-slot-eventos'].forEach(id => {
     const slot = document.getElementById(id);
     if (!slot) return;
     slot.innerHTML = html;
   });
-  const irBtn = document.getElementById('evento-banner-ir');
-  if (irBtn) irBtn.addEventListener('click', () => switchModule('eventos'));
+  document.querySelectorAll('.evento-banner-ir').forEach(btn => {
+    btn.addEventListener('click', () => switchModule('eventos'));
+  });
 }
 
 function renderEventos() {
@@ -760,53 +780,261 @@ function renderEventos() {
 
   const helpSlot = document.getElementById('eventos-help-slot');
   if (helpSlot && !helpSlot.dataset.wired) {
-    helpSlot.innerHTML = helpHint('El % de alza se calculó comparando el índice de ventas de la semana del evento contra el promedio de las semanas normales alrededor, por sucursal — no es un número inventado a ojo.');
+    helpSlot.innerHTML = helpHint('El % de alza se calculó comparando el índice de ventas de la semana del evento contra el promedio de las semanas normales alrededor, por sucursal — no es un número inventado a ojo. Los eventos que agregues tú no tienen ese cálculo hasta que pase al menos una edición y se pueda comparar contra lo normal.');
     helpSlot.dataset.wired = '1';
   }
 
   const calendario = DataEngine.calendarioEventos(STATE);
   if (!calendario.length) {
-    cont.innerHTML = `<p class="text-muted">No hay eventos cargados todavía.</p>`;
-    return;
-  }
-
-  cont.innerHTML = calendario.map((e, i) => {
-    const positivo = e.alzaPromedio >= 0;
-    const bars = STATE.sucursales.map(suc => {
-      const v = e.porSucursal[suc];
-      if (typeof v !== 'number' || isNaN(v)) return '';
-      const ancho = Math.min(100, Math.abs(v));
-      const dir = v >= 0 ? 'up' : 'down';
-      return `
-        <div class="evento-bar-row">
-          <span class="evento-bar-suc">${sucDot(suc)}${suc}</span>
-          <div class="evento-bar-track">
-            <div class="evento-bar-fill ${dir}" style="width:${ancho}%"></div>
+    cont.innerHTML = `<p class="text-muted">No hay eventos próximos — agrega uno con "+ Nuevo evento" arriba.</p>`;
+  } else {
+    cont.innerHTML = calendario.map((e, i) => {
+      const positivo = e.alzaPromedio >= 0;
+      const bars = STATE.sucursales.map(suc => {
+        const v = e.porSucursal[suc];
+        if (typeof v !== 'number' || isNaN(v)) return '';
+        const ancho = Math.min(100, Math.abs(v));
+        const dir = v >= 0 ? 'up' : 'down';
+        return `
+          <div class="evento-bar-row">
+            <span class="evento-bar-suc">${sucDot(suc)}${suc}</span>
+            <div class="evento-bar-track">
+              <div class="evento-bar-fill ${dir}" style="width:${ancho}%"></div>
+            </div>
+            <span class="evento-bar-val ${dir}">${v >= 0 ? '+' : ''}${round1(v)}%</span>
           </div>
-          <span class="evento-bar-val ${dir}">${v >= 0 ? '+' : ''}${round1(v)}%</span>
+        `;
+      }).join('');
+
+      const alzaTxt = e.sinEstimado ? `<span class="evento-card-alza-label">sin estimado</span>` : `${positivo ? '+' : ''}${round1(e.alzaPromedio)}%<span class="evento-card-alza-label">alza promedio</span>`;
+      const badge = e.base ? `<span class="evento-card-badge base">Oficial</span>` : `<span class="evento-card-badge custom">Personalizado</span>`;
+      const borrar = e.base ? '' : `<button class="evento-card-delete" data-borrar-evento="${e.id}" type="button">🗑 Borrar</button>`;
+
+      return `
+        <div class="evento-card" data-evento="${i}" style="animation-delay:${Math.min(i, 8) * 0.03}s">
+          <div class="evento-card-top">
+            <div>
+              <div class="evento-card-fecha">${eventCountdownLabel(e.diasFaltantes)} · ${e.proximaFecha.toLocaleDateString('es-PA', { day: 'numeric', month: 'long' })}</div>
+              <div class="evento-card-nombre">${e.nombre}${badge}</div>
+              <div class="evento-card-categoria">${e.categoria}</div>
+            </div>
+            <div class="evento-card-alza ${e.sinEstimado ? '' : (positivo ? 'up' : 'down')}">${alzaTxt}</div>
+          </div>
+          <div class="evento-card-detalle">${bars}${e.notas ? `<p class="text-muted" style="margin-top:.5rem">${e.notas}</p>` : ''}${borrar}</div>
         </div>
       `;
     }).join('');
 
+    cont.querySelectorAll('.evento-card').forEach(card => {
+      card.addEventListener('click', (ev) => {
+        if (ev.target.closest('[data-borrar-evento]')) return;
+        card.classList.toggle('open');
+      });
+    });
+    cont.querySelectorAll('[data-borrar-evento]').forEach(btn => {
+      btn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (confirm('¿Borrar este evento personalizado? Esta acción no se puede deshacer.')) {
+          DataEngine.eliminarEventoPersonalizado(btn.dataset.borrarEvento);
+          renderAll();
+        }
+      });
+    });
+  }
+
+  renderEventosMes();
+}
+
+/* ---------------- Calendario mensual: grilla real de días ---------------- */
+
+function wireEventosMes() {
+  document.getElementById('eventos-nuevo-btn')?.addEventListener('click', () => abrirFormularioEvento());
+  document.getElementById('eventos-month-prev')?.addEventListener('click', () => {
+    EVENTOS_MES_VISTA = new Date(EVENTOS_MES_VISTA.getFullYear(), EVENTOS_MES_VISTA.getMonth() - 1, 1);
+    renderEventosMes();
+  });
+  document.getElementById('eventos-month-next')?.addEventListener('click', () => {
+    EVENTOS_MES_VISTA = new Date(EVENTOS_MES_VISTA.getFullYear(), EVENTOS_MES_VISTA.getMonth() + 1, 1);
+    renderEventosMes();
+  });
+  document.getElementById('eventos-month-today')?.addEventListener('click', () => {
+    const hoy = new Date();
+    EVENTOS_MES_VISTA = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    renderEventosMes();
+  });
+  document.getElementById('evento-quicklink-btn')?.addEventListener('click', () => switchModule('eventos'));
+
+  const weekdaysCont = document.getElementById('eventos-grid-weekdays');
+  if (weekdaysCont) weekdaysCont.innerHTML = NOMBRES_DIA_SEMANA.map(d => `<span>${d}</span>`).join('');
+}
+
+function renderEventosMes() {
+  const grid = document.getElementById('eventos-grid');
+  const label = document.getElementById('eventos-month-label');
+  if (!grid || !label || !STATE) return;
+
+  const year = EVENTOS_MES_VISTA.getFullYear();
+  const month = EVENTOS_MES_VISTA.getMonth();
+  label.textContent = `${NOMBRES_MES[month]} ${year}`;
+
+  const hoy = new Date();
+  const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+
+  const primerDia = new Date(year, month, 1);
+  // Lunes = 0 ... Domingo = 6 (getDay() da 0=domingo, así que lo corremos)
+  const offsetInicio = (primerDia.getDay() + 6) % 7;
+  const diasEnMes = new Date(year, month + 1, 0).getDate();
+  const diasMesAnterior = new Date(year, month, 0).getDate();
+
+  const eventosDelMes = DataEngine.eventosEnMes(STATE, year, month);
+  const eventosPorDia = {};
+  eventosDelMes.forEach(e => {
+    eventosPorDia[e.diaDelMes] = eventosPorDia[e.diaDelMes] || [];
+    eventosPorDia[e.diaDelMes].push(e);
+  });
+
+  const celdas = [];
+  // Cola del mes anterior, para completar la primera semana visualmente
+  for (let i = offsetInicio - 1; i >= 0; i--) {
+    celdas.push({ dia: diasMesAnterior - i, outside: true });
+  }
+  for (let d = 1; d <= diasEnMes; d++) {
+    celdas.push({ dia: d, outside: false, fecha: new Date(year, month, d) });
+  }
+  // Completar hasta múltiplo de 7
+  let siguienteMesDia = 1;
+  while (celdas.length % 7 !== 0) {
+    celdas.push({ dia: siguienteMesDia++, outside: true });
+  }
+
+  grid.innerHTML = celdas.map(c => {
+    if (c.outside) {
+      return `<div class="eventos-day outside"><span class="eventos-day-num">${c.dia}</span></div>`;
+    }
+    const esHoy = c.fecha.getTime() === hoy0.getTime();
+    const eventosDia = eventosPorDia[c.dia] || [];
+    const chips = eventosDia.map(e => {
+      const dir = e.sinEstimado ? '' : (e.alzaPromedio >= 0 ? 'up' : 'down');
+      const clase = e.base ? '' : 'custom';
+      const titulo = e.sinEstimado ? e.nombre : `${e.nombre} (${e.alzaPromedio >= 0 ? '+' : ''}${round1(e.alzaPromedio)}%)`;
+      return `<span class="eventos-day-chip ${clase} ${dir}" data-evento-chip="${e.id}" data-evento-fecha="${fechaISO(c.fecha)}" title="${e.nombre}">${titulo}</span>`;
+    }).join('');
     return `
-      <div class="evento-card" data-evento="${i}" style="animation-delay:${i * 0.03}s">
-        <div class="evento-card-top">
-          <div>
-            <div class="evento-card-fecha">${eventCountdownLabel(e.diasFaltantes)} · ${e.proximaFecha.toLocaleDateString('es-PA', { day: 'numeric', month: 'long' })}</div>
-            <div class="evento-card-nombre">${e.nombre}</div>
-            <div class="evento-card-categoria">${e.categoria}</div>
-          </div>
-          <div class="evento-card-alza ${positivo ? 'up' : 'down'}">${positivo ? '+' : ''}${round1(e.alzaPromedio)}%
-            <span class="evento-card-alza-label">alza promedio</span>
-          </div>
-        </div>
-        <div class="evento-card-detalle">${bars}</div>
+      <div class="eventos-day ${esHoy ? 'today' : ''}" data-dia-fecha="${fechaISO(c.fecha)}">
+        <span class="eventos-day-num">${c.dia}</span>
+        ${chips}
+        <span class="eventos-day-add">+ agregar</span>
       </div>
     `;
   }).join('');
 
-  cont.querySelectorAll('.evento-card').forEach(card => {
-    card.addEventListener('click', () => card.classList.toggle('open'));
+  // Clic en un chip de evento personalizado -> abrir para editar/borrar. Clic en el resto
+  // de la celda (o en un chip "Oficial") -> crear uno nuevo con esa fecha precargada.
+  grid.querySelectorAll('[data-evento-chip]').forEach(chip => {
+    chip.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const id = chip.dataset.eventoChip;
+      if (String(id).startsWith('custom:')) {
+        const existente = DataEngine.eventosPersonalizados().find(e => e.id === id);
+        if (existente) abrirFormularioEvento(chip.dataset.eventoFecha, existente);
+      } else {
+        switchModule('eventos'); // eventos oficiales se consultan en la lista de abajo, no se editan acá
+      }
+    });
+  });
+  grid.querySelectorAll('.eventos-day:not(.outside)').forEach(cell => {
+    cell.addEventListener('click', () => abrirFormularioEvento(cell.dataset.diaFecha));
+  });
+}
+
+/* ---------------- Modal "Nuevo evento" / editar evento personalizado ---------------- */
+
+function cerrarFormularioEvento() {
+  const modal = document.getElementById('evento-form-modal');
+  if (modal) modal.remove();
+}
+
+function abrirFormularioEvento(fechaPrellenada, eventoExistente) {
+  cerrarFormularioEvento();
+
+  const esEdicion = !!eventoExistente;
+  const fechaValor = eventoExistente ? eventoExistente.fecha : (fechaPrellenada || fechaISO(new Date()));
+  const catOptions = CATEGORIAS_EVENTO.map(c => `<option value="${c}" ${eventoExistente && eventoExistente.categoria === c ? 'selected' : ''}>${c}</option>`).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'evento-form-modal';
+  modal.className = 'about-modal-overlay';
+  modal.innerHTML = `
+    <div class="about-modal-box">
+      <button class="about-modal-close" id="evento-form-close">&times;</button>
+      <h3>${esEdicion ? 'Editar evento' : 'Nuevo evento'}</h3>
+      <p class="text-muted" style="margin-bottom:1rem;font-size:.8rem">
+        Se guarda en este navegador y aparece en el calendario y en los avisos de Resumen apenas se acerque la fecha.
+      </p>
+      <p class="evento-form-error" id="evento-form-error"></p>
+      <div class="evento-form-row">
+        <label for="evento-form-nombre">Nombre del evento</label>
+        <input type="text" id="evento-form-nombre" maxlength="80" value="${eventoExistente ? eventoExistente.nombre.replace(/"/g, '&quot;') : ''}" placeholder="Ej. Promo aniversario Costa del Este">
+      </div>
+      <div class="evento-form-row">
+        <label for="evento-form-categoria">Categoría</label>
+        <select id="evento-form-categoria">${catOptions}</select>
+      </div>
+      <div class="evento-form-row">
+        <label for="evento-form-fecha">Fecha</label>
+        <input type="date" id="evento-form-fecha" value="${fechaValor}">
+      </div>
+      <div class="evento-form-row">
+        <label class="evento-form-check"><input type="checkbox" id="evento-form-recurrente" ${eventoExistente && eventoExistente.recurrente ? 'checked' : ''}> Se repite cada año en esta misma fecha</label>
+      </div>
+      <div class="evento-form-row">
+        <label for="evento-form-alza">% de alza/baja esperado (opcional)</label>
+        <input type="number" step="0.1" id="evento-form-alza" placeholder="Ej. 15 (sube) o -10 (baja) — déjalo vacío si no lo sabes todavía" value="${eventoExistente && !eventoExistente.sinEstimado ? eventoExistente.alzaPromedio : ''}">
+      </div>
+      <div class="evento-form-row">
+        <label for="evento-form-notas">Notas (opcional)</label>
+        <textarea id="evento-form-notas" rows="2" maxlength="200">${eventoExistente ? (eventoExistente.notas || '') : ''}</textarea>
+      </div>
+      <div class="evento-form-actions">
+        <div>${esEdicion ? `<button class="btn-mini" id="evento-form-borrar">🗑 Borrar evento</button>` : ''}</div>
+        <button class="evento-form-guardar-btn" id="evento-form-guardar" type="button">Guardar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) cerrarFormularioEvento(); });
+  document.getElementById('evento-form-close').addEventListener('click', cerrarFormularioEvento);
+
+  document.getElementById('evento-form-borrar')?.addEventListener('click', () => {
+    if (confirm('¿Borrar este evento personalizado?')) {
+      DataEngine.eliminarEventoPersonalizado(eventoExistente.id);
+      cerrarFormularioEvento();
+      renderAll();
+    }
+  });
+
+  document.getElementById('evento-form-guardar').addEventListener('click', () => {
+    const nombre = document.getElementById('evento-form-nombre').value.trim();
+    const fecha = document.getElementById('evento-form-fecha').value;
+    const errorEl = document.getElementById('evento-form-error');
+    if (!nombre || !fecha) {
+      errorEl.textContent = 'Ponle un nombre y una fecha al evento antes de guardar.';
+      errorEl.classList.add('visible');
+      return;
+    }
+    const datos = {
+      nombre,
+      categoria: document.getElementById('evento-form-categoria').value,
+      fecha,
+      recurrente: document.getElementById('evento-form-recurrente').checked,
+      alzaPromedio: document.getElementById('evento-form-alza').value,
+      notas: document.getElementById('evento-form-notas').value.trim(),
+    };
+    if (esEdicion) DataEngine.eliminarEventoPersonalizado(eventoExistente.id); // simplifica: editar = borrar + crear de nuevo
+    DataEngine.crearEventoPersonalizado(datos);
+    cerrarFormularioEvento();
+    renderAll();
+    switchModule('eventos');
   });
 }
 

@@ -70,6 +70,12 @@
 
   <div class="status-summary-bar" id="status-summary-bar"></div>
 
+  <div class="evento-quicklink-row">
+    <button class="evento-quicklink-btn" id="evento-quicklink-btn" type="button">
+      📅 Calendario de eventos <span class="evento-quicklink-arrow">→</span>
+    </button>
+  </div>
+
   <div id="evento-banner-slot"></div>
 
   <div class="kpi-row" id="kpi-row"></div>
@@ -152,6 +158,26 @@
   </div>
 
   <div id="evento-banner-slot-eventos"></div>
+
+  <div class="panel" style="margin:0 2rem 1.5rem">
+    <div class="panel-header">
+      <span class="panel-title">Calendario mensual</span>
+      <button class="btn-mini" id="eventos-nuevo-btn" type="button">+ Nuevo evento</button>
+    </div>
+    <p class="text-muted" style="padding:0 1.2rem 1rem;margin-top:-.4rem">
+      Los eventos marcados <b>Oficial</b> vienen del calendario de fechas comerciales y feriados de ley de Panamá
+      y no se pueden borrar. Los que agregues quedan guardados en este navegador — clic en un día con evento
+      personalizado para editarlo o borrarlo, o clic en un día vacío para crear uno nuevo ahí.
+    </p>
+    <div class="eventos-month-nav" id="eventos-month-nav">
+      <button class="eventos-month-arrow" id="eventos-month-prev" type="button" aria-label="Mes anterior">←</button>
+      <span class="eventos-month-label" id="eventos-month-label"></span>
+      <button class="eventos-month-arrow" id="eventos-month-next" type="button" aria-label="Mes siguiente">→</button>
+      <button class="link-btn" id="eventos-month-today" type="button">Hoy</button>
+    </div>
+    <div class="eventos-grid-weekdays" id="eventos-grid-weekdays"></div>
+    <div class="eventos-grid" id="eventos-grid"></div>
+  </div>
 
   <div class="panel" style="margin:0 2rem 1.5rem">
     <div class="panel-header">
