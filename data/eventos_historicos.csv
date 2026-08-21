@@ -1,0 +1,58 @@
+# DATOS SIMULADOS DE REFERENCIA — generados para prototipar el módulo de Eventos. No son ventas reales de Barrio Pizza. Reemplazar con export real de POS antes de producción.
+fecha,nombre_evento,categoria,sucursal,alza_pct_observada,indice_semana_evento,indice_baseline
+2025-02-14,San Valentín,Fecha comercial,Brisas del Golf,16.9,116.7,99.9
+2025-02-14,San Valentín,Fecha comercial,Costa del Este,13.1,133.8,118.3
+2025-02-14,San Valentín,Fecha comercial,Marbella,36.4,143.0,104.8
+2025-02-14,San Valentín,Fecha comercial,Via Argentina,62.9,153.5,94.2
+2025-03-03,Carnavales (semana previa a Miércoles de Ceniza),Feriado nacional,Brisas del Golf,-35.6,63.6,98.7
+2025-03-03,Carnavales (semana previa a Miércoles de Ceniza),Feriado nacional,Costa del Este,-36.5,74.7,117.6
+2025-03-03,Carnavales (semana previa a Miércoles de Ceniza),Feriado nacional,Marbella,-11.5,95.4,107.8
+2025-03-03,Carnavales (semana previa a Miércoles de Ceniza),Feriado nacional,Via Argentina,-25.2,71.4,95.4
+2025-04-17,Semana Santa (Jueves/Viernes Santo),Feriado nacional,Brisas del Golf,-22.5,77.4,99.9
+2025-04-17,Semana Santa (Jueves/Viernes Santo),Feriado nacional,Costa del Este,-40.8,69.3,117.1
+2025-04-17,Semana Santa (Jueves/Viernes Santo),Feriado nacional,Marbella,-4.0,103.4,107.7
+2025-04-17,Semana Santa (Jueves/Viernes Santo),Feriado nacional,Via Argentina,-26.9,70.7,96.8
+2025-06-15,Día del Padre,Fecha comercial,Brisas del Golf,47.9,151.7,102.6
+2025-06-15,Día del Padre,Fecha comercial,Costa del Este,30.5,149.1,114.3
+2025-06-15,Día del Padre,Fecha comercial,Marbella,22.1,141.7,116.0
+2025-06-15,Día del Padre,Fecha comercial,Via Argentina,20.5,120.1,99.6
+2025-08-04,Feriado de Fundación de Panamá La Vieja (puente escolar),Feriado local,Brisas del Golf,12.3,115.8,103.1
+2025-08-04,Feriado de Fundación de Panamá La Vieja (puente escolar),Feriado local,Costa del Este,1.0,118.6,117.4
+2025-08-04,Feriado de Fundación de Panamá La Vieja (puente escolar),Feriado local,Marbella,23.5,139.3,112.8
+2025-08-04,Feriado de Fundación de Panamá La Vieja (puente escolar),Feriado local,Via Argentina,8.9,104.5,95.9
+2025-10-31,Halloween,Fecha comercial,Brisas del Golf,18.2,118.2,100.0
+2025-10-31,Halloween,Fecha comercial,Costa del Este,1.3,118.1,116.6
+2025-10-31,Halloween,Fecha comercial,Marbella,27.6,147.0,115.2
+2025-10-31,Halloween,Fecha comercial,Via Argentina,54.6,146.7,94.9
+2025-11-03,Separación de Panamá de Colombia,Feriado nacional,Brisas del Golf,33.2,136.5,102.5
+2025-11-03,Separación de Panamá de Colombia,Feriado nacional,Costa del Este,17.5,137.3,116.8
+2025-11-03,Separación de Panamá de Colombia,Feriado nacional,Marbella,44.5,169.8,117.5
+2025-11-03,Separación de Panamá de Colombia,Feriado nacional,Via Argentina,28.1,122.2,95.4
+2025-11-10,Primer Grito de Independencia (La Villa de Los Santos),Feriado nacional,Brisas del Golf,14.4,120.0,104.9
+2025-11-10,Primer Grito de Independencia (La Villa de Los Santos),Feriado nacional,Costa del Este,8.8,126.5,116.3
+2025-11-10,Primer Grito de Independencia (La Villa de Los Santos),Feriado nacional,Marbella,8.6,127.9,117.8
+2025-11-10,Primer Grito de Independencia (La Villa de Los Santos),Feriado nacional,Via Argentina,15.4,111.8,96.9
+2025-11-28,Independencia de Panamá de España,Feriado nacional,Brisas del Golf,44.9,154.8,106.9
+2025-11-28,Independencia de Panamá de España,Feriado nacional,Costa del Este,24.3,145.5,117.1
+2025-11-28,Independencia de Panamá de España,Feriado nacional,Marbella,18.4,135.1,114.1
+2025-11-28,Independencia de Panamá de España,Feriado nacional,Via Argentina,31.5,128.8,98.0
+2025-12-08,Día de las Madres,Fecha comercial (la más fuerte del año en Panamá),Brisas del Golf,113.9,228.6,106.9
+2025-12-08,Día de las Madres,Fecha comercial (la más fuerte del año en Panamá),Costa del Este,84.5,216.1,117.1
+2025-12-08,Día de las Madres,Fecha comercial (la más fuerte del año en Panamá),Marbella,88.4,215.0,114.1
+2025-12-08,Día de las Madres,Fecha comercial (la más fuerte del año en Panamá),Via Argentina,63.6,160.3,98.0
+2025-12-24,Nochebuena,Feriado nacional,Brisas del Golf,126.2,245.1,108.4
+2025-12-24,Nochebuena,Feriado nacional,Costa del Este,69.8,203.3,119.8
+2025-12-24,Nochebuena,Feriado nacional,Marbella,90.4,219.1,115.0
+2025-12-24,Nochebuena,Feriado nacional,Via Argentina,40.1,142.6,101.8
+2025-12-31,Fin de Año,Feriado nacional,Brisas del Golf,74.7,189.3,108.4
+2025-12-31,Fin de Año,Feriado nacional,Costa del Este,47.0,176.0,119.8
+2025-12-31,Fin de Año,Feriado nacional,Marbella,81.2,208.5,115.0
+2025-12-31,Fin de Año,Feriado nacional,Via Argentina,57.8,160.6,101.8
+2025-02-02,Super Bowl LIX,Fecha deportiva,Brisas del Golf,41.6,138.3,97.7
+2025-02-02,Super Bowl LIX,Fecha deportiva,Costa del Este,31.0,153.8,117.4
+2025-02-02,Super Bowl LIX,Fecha deportiva,Marbella,21.5,127.5,104.9
+2025-02-02,Super Bowl LIX,Fecha deportiva,Via Argentina,49.0,141.9,95.2
+2025-06-21,Reapertura de clases / vacaciones de medio año,Estacional,Brisas del Golf,28.5,128.9,100.3
+2025-06-21,Reapertura de clases / vacaciones de medio año,Estacional,Costa del Este,9.6,124.7,113.8
+2025-06-21,Reapertura de clases / vacaciones de medio año,Estacional,Marbella,4.1,122.6,117.8
+2025-06-21,Reapertura de clases / vacaciones de medio año,Estacional,Via Argentina,15.9,114.8,99.0

@@ -503,6 +503,44 @@ table.orders-table tr:hover td{background:rgba(255,255,255,.02)}
 .chat-suggestions button:hover{border-color:var(--red);color:var(--white)}
 
 /* ============ ANOMALÍAS ============ */
+/* ============ EVENTOS ============ */
+.evento-card{
+  border:1px solid rgba(255,255,255,.08);border-radius:8px;
+  padding:.9rem 1.1rem;margin-bottom:.7rem;cursor:pointer;
+  animation:fadeUp .4s var(--ease-out-expo) forwards;opacity:0;
+  transition:border-color .2s;
+}
+.evento-card:hover{border-color:rgba(255,255,255,.22)}
+.evento-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+.evento-card-fecha{
+  font-family:var(--font-mono);font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;
+  color:rgba(255,255,255,.5);margin-bottom:.2rem;
+}
+.evento-card-nombre{font-family:var(--font-display);font-size:1.05rem;letter-spacing:.01em}
+.evento-card-categoria{font-size:.78rem;color:rgba(255,255,255,.5);margin-top:.1rem}
+.evento-card-alza{
+  font-family:var(--font-display);font-size:1.3rem;line-height:1;text-align:right;white-space:nowrap;
+}
+.evento-card-alza.up{color:var(--green-ok)}
+.evento-card-alza.down{color:var(--blue-warn)}
+.evento-card-alza-label{
+  display:block;font-family:var(--font-mono);font-size:.6rem;letter-spacing:.06em;
+  text-transform:uppercase;color:rgba(255,255,255,.4);font-weight:400;margin-top:.15rem;
+}
+.evento-card-detalle{
+  max-height:0;overflow:hidden;transition:max-height .3s var(--ease-out-expo);
+}
+.evento-card.open .evento-card-detalle{max-height:260px;margin-top:.9rem;padding-top:.8rem;border-top:1px dashed rgba(255,255,255,.1)}
+.evento-bar-row{display:grid;grid-template-columns:150px 1fr 60px;align-items:center;gap:.6rem;margin-bottom:.5rem;font-size:.78rem}
+.evento-bar-suc{display:flex;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evento-bar-track{height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.evento-bar-fill{height:100%;border-radius:999px}
+.evento-bar-fill.up{background:var(--green-ok)}
+.evento-bar-fill.down{background:var(--blue-warn)}
+.evento-bar-val{font-family:var(--font-mono);text-align:right}
+.evento-bar-val.up{color:var(--green-ok)}
+.evento-bar-val.down{color:var(--blue-warn)}
+
 .anomaly-card{
   background:rgba(207,47,44,.06);border:1px solid rgba(207,47,44,.25);border-radius:8px;
   padding:.8rem 1rem;margin-bottom:.6rem;font-size:.83rem;line-height:1.5;

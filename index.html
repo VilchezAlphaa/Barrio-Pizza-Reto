@@ -49,6 +49,7 @@
     <li><button data-module="resumen" class="tab-btn">Resumen</button></li>
     <li><button data-module="sucursales" class="tab-btn">Sucursales</button></li>
     <li><button data-module="proveedores" class="tab-btn">Proveedores</button></li>
+    <li><button data-module="eventos" class="tab-btn">Eventos</button></li>
     <li><button data-module="informes" class="tab-btn">Informes</button></li>
     <li><button data-module="anomalias" class="tab-btn">Anomalías</button></li>
     <li><button data-module="asistente" class="tab-btn">Asistente IA</button></li>
@@ -68,6 +69,8 @@
   </div>
 
   <div class="status-summary-bar" id="status-summary-bar"></div>
+
+  <div id="evento-banner-slot"></div>
 
   <div class="kpi-row" id="kpi-row"></div>
 
@@ -131,6 +134,31 @@
     <p class="text-muted">Basado en la necesidad real proyectada (redondeada hacia arriba al formato completo). Cada ítem muestra cuánto le corresponde a cada sucursal, para que puedas verificar antes de reenviar.</p>
   </div>
   <div id="providers-container"></div>
+</section>
+
+<!-- ============ MÓDULO: EVENTOS ============ -->
+<section class="module" data-module="eventos" id="module-eventos">
+  <div class="page-header">
+    <h2>Calendario de eventos <span id="eventos-help-slot"></span></h2>
+    <p class="text-muted">
+      Fechas comerciales y feriados que históricamente mueven las ventas — para reforzar el pedido con anticipación
+      en vez de reaccionar cuando ya faltó stock. Clic en un evento para ver el detalle por sucursal.
+    </p>
+    <p class="text-muted module-notice">
+      ⚠ Los porcentajes de alza son <b>data sintética de referencia</b> (generada a partir de un índice de ventas
+      simulado con estacionalidad de Panamá), no ventas reales de Barrio Pizza — pensada para prototipar este módulo
+      hasta que se conecte al POS real.
+    </p>
+  </div>
+
+  <div id="evento-banner-slot-eventos"></div>
+
+  <div class="panel" style="margin:0 2rem 1.5rem">
+    <div class="panel-header">
+      <span class="panel-title">Próximos eventos</span>
+    </div>
+    <div id="eventos-calendar"></div>
+  </div>
 </section>
 
 <!-- ============ MÓDULO: INFORMES ============ -->

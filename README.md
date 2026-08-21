@@ -215,6 +215,17 @@ completo** (en unidad base) se considera redondeo normal, no una alerta.
   / sin stock / olvidos / no catalogados) arriba del módulo Resumen, con los
   mismos números que las tarjetas KPI de abajo — pensado para el primer
   segundo de atención de la gerente.
+- **Módulo Eventos**: calendario de fechas comerciales y feriados de Panamá
+  (San Valentín, Carnavales, Independencia, Nochebuena, etc.) con cuenta
+  regresiva y el % de alza histórica observada por sucursal, calculado
+  comparando la semana del evento contra el promedio de las semanas normales
+  alrededor (`data/eventos_historicos.csv`, apoyado en un índice de ventas de
+  referencia de 52 semanas en `data/ventas_semanales_referencia.csv`). Ambos
+  CSV llevan una primera línea `# DATOS SIMULADOS DE REFERENCIA` — **no son
+  ventas reales**, son data sintética honesta para prototipar el módulo hasta
+  que se conecte al POS real (ver "Cómo lo conectaría a un sistema como Odoo
+  en producción"). Cuando falta una semana o menos para un evento, aparece un
+  aviso en el módulo Resumen sugiriendo reforzar el pedido con anticipación.
 
 ---
 
@@ -302,7 +313,7 @@ Usé **Claude** (Anthropic) durante todo el desarrollo:
 ├── css/style.css            # estilo visual (paleta/tipografía inspiradas en Barrio Pizza)
 ├── js/data-engine.js         # toda la lógica de negocio (proyección, alertas, anomalías)
 ├── js/app.js                 # renderizado de la interfaz y eventos
-├── data/*.csv                 # los 4 archivos de datos
+├── data/*.csv                 # los 4 archivos de datos del reto + 2 de referencia para Eventos
 ├── api/chat.mjs                # función serverless — chat con Groq (llama-3.3-70b-versatile)
 ├── package.json
 └── vercel.json

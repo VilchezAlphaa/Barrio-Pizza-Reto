@@ -13,9 +13,9 @@
 const SYSTEM_MANUAL = `
 MANUAL DEL DASHBOARD (para responder preguntas sobre cómo usar la página):
 
-Navegación: hay 6 módulos en la barra superior — Resumen, Sucursales, Proveedores, Informes, Anomalías, Asistente IA.
+Navegación: hay 7 módulos en la barra superior — Resumen, Sucursales, Proveedores, Eventos, Informes, Anomalías, Asistente IA.
 
-1. RESUMEN (vista de entrada): muestra un estado general — tarjetas KPI, estado por sucursal (semáforo), y una lista "Lo más urgente" con el botón "Ver todas las alertas →" que lleva al módulo Sucursales.
+1. RESUMEN (vista de entrada): muestra un estado general — tarjetas KPI, estado por sucursal (semáforo), un aviso de "próximo evento" cuando falta una semana o menos para una fecha comercial/feriado importante, y una lista "Lo más urgente" con el botón "Ver todas las alertas →" que lleva al módulo Sucursales.
 
 2. SUCURSALES: acá se revisan y corrigen los pedidos, uno por sucursal.
    - Selector "Método de proyección": cambia cómo se calcula la proyección de consumo (ej. promedio de 6 semanas vs. otros métodos); todo el dashboard se recalcula al cambiarlo.
@@ -34,9 +34,11 @@ Navegación: hay 6 módulos en la barra superior — Resumen, Sucursales, Provee
    - Pestaña "Historial de consumo": tabla de consumo real por semana, con botón "⬇ CSV de historial".
    - Sección "Ajustes" (abajo del todo): botón "↺ Reiniciar" borra las correcciones manuales que hizo la gerente y vuelve a los pedidos originales; botón "ℹ Ver" abre el modal "Acerca de este dashboard" con info del proyecto.
 
-5. ANOMALÍAS: compara cómo pide cada sucursal contra el promedio de las otras 3 sucursales (no contra su propia proyección) — para detectar pedidos raros que no se ven comparando la sucursal contra sí misma.
+5. EVENTOS: calendario de fechas comerciales y feriados (San Valentín, Independencia, Nochebuena, Halloween, etc.) con cuenta regresiva y el % de alza histórica observada por sucursal. Es data SINTÉTICA DE REFERENCIA (no ventas reales — el propio módulo lo aclara), pensada para sugerir un % cuando la gerente planea un pedido reforzado para una fecha próxima, y para más adelante conectarse a ventas reales. Clic en un evento del calendario despliega el detalle por sucursal.
 
-6. ASISTENTE IA (este chat): responde preguntas en español sobre las alertas, proveedores y datos de esta semana, y sobre cómo usar el dashboard, usando este manual y el resumen de datos que se te manda en cada pregunta.
+6. ANOMALÍAS: compara cómo pide cada sucursal contra el promedio de las otras 3 sucursales (no contra su propia proyección) — para detectar pedidos raros que no se ven comparando la sucursal contra sí misma.
+
+7. ASISTENTE IA (este chat): responde preguntas en español sobre las alertas, proveedores, eventos próximos y datos de esta semana, y sobre cómo usar el dashboard, usando este manual y el resumen de datos que se te manda en cada pregunta.
 
 Si te preguntan cómo hacer algo que SÍ está en este manual, explica en qué módulo y botón está. Si preguntan algo de la interfaz que no está descrito acá, dilo honestamente en vez de inventar dónde está.
 `.trim();

@@ -23,7 +23,7 @@ const METODOS = [
   { key: 'recomendada', label: 'Recomendada (combinada)' },
 ];
 
-const MODULES = ['resumen', 'sucursales', 'proveedores', 'informes', 'anomalias', 'asistente'];
+const MODULES = ['resumen', 'sucursales', 'proveedores', 'eventos', 'informes', 'anomalias', 'asistente'];
 
 let INICIALIZADO = false;
 
@@ -105,9 +105,11 @@ async function init() {
 function renderAll() {
   renderKPIs();
   renderSummaryBar();
+  renderEventBanner();
   renderResumen();
   renderSucursales();
   renderProviders();
+  renderEventos();
   renderAnomalies();
   renderInformes();
 }
@@ -168,7 +170,7 @@ function wireTopbar() {
 }
 
 function labelForModule(m) {
-  return { resumen: 'Resumen', sucursales: 'Sucursales', proveedores: 'Proveedores', informes: 'Informes', anomalias: 'Anomalías', asistente: 'Asistente IA' }[m] || m;
+  return { resumen: 'Resumen', sucursales: 'Sucursales', proveedores: 'Proveedores', eventos: 'Eventos', informes: 'Informes', anomalias: 'Anomalías', asistente: 'Asistente IA' }[m] || m;
 }
 
 function switchModule(key) {
@@ -705,6 +707,107 @@ function renderResumen() {
   } else {
     list.innerHTML = cards.map((c, i) => alertCardHTML(c, i)).join('');
   }
+}
+
+/* ---------------- Módulo Eventos: calendario + banner de aviso ---------------- */
+//
+// Fuente: state.eventos (armado en DataEngine a partir de eventos_historicos.csv,
+// data SINTÉTICA DE REFERENCIA). DataEngine.calendarioEventos() calcula la próxima
+// ocurrencia real de cada fecha (mes/día se repite cada año) y cuántos días faltan.
+
+const VENTANA_AVISO_DIAS = 7; // a partir de cuántos días antes aparece el banner
+
+function eventCountdownLabel(dias) {
+  if (dias === 0) return 'HOY';
+  if (dias === 1) return 'MAÑANA';
+  return `EN ${dias} DÍAS`;
+}
+
+function eventoBannerHTML(e) {
+  const suc = e.sucursalMasAfectada;
+  const sucTxt = suc ? ` — la más afectada históricamente es <b>${suc}</b> (+${round1(e.alzaMasAfectada)}%)` : '';
+  return `
+    <div class="alert-card info evento-banner" style="animation-delay:0s">
+      <div class="alert-top">
+        <span class="alert-tag">PRÓXIMO EVENTO · ${eventCountdownLabel(e.diasFaltantes)}</span>
+        <button class="link-btn" id="evento-banner-ir" type="button">Ver en Eventos →</button>
+      </div>
+      <div class="alert-msg">
+        <b>${e.nombre}</b> (${e.categoria}) — alza histórica promedio de <b>+${round1(e.alzaPromedio)}%</b> en ventas${sucTxt}.
+      </div>
+      <div class="accion-sugerida">→ Revisa si conviene reforzar el pedido de esta semana antes de cerrarlo, especialmente en las sucursales más afectadas.</div>
+    </div>
+  `;
+}
+
+// Rellena el aviso en Resumen y (opcionalmente) en el propio módulo Eventos —
+// usa la misma tarjeta en los dos lugares para no duplicar el criterio de "cuándo avisar".
+function renderEventBanner() {
+  const evento = DataEngine.eventoProximo(STATE, VENTANA_AVISO_DIAS);
+  const html = evento ? eventoBannerHTML(evento) : '';
+  ['evento-banner-slot', 'evento-banner-slot-eventos'].forEach(id => {
+    const slot = document.getElementById(id);
+    if (!slot) return;
+    slot.innerHTML = html;
+  });
+  const irBtn = document.getElementById('evento-banner-ir');
+  if (irBtn) irBtn.addEventListener('click', () => switchModule('eventos'));
+}
+
+function renderEventos() {
+  const cont = document.getElementById('eventos-calendar');
+  if (!cont) return;
+
+  const helpSlot = document.getElementById('eventos-help-slot');
+  if (helpSlot && !helpSlot.dataset.wired) {
+    helpSlot.innerHTML = helpHint('El % de alza se calculó comparando el índice de ventas de la semana del evento contra el promedio de las semanas normales alrededor, por sucursal — no es un número inventado a ojo.');
+    helpSlot.dataset.wired = '1';
+  }
+
+  const calendario = DataEngine.calendarioEventos(STATE);
+  if (!calendario.length) {
+    cont.innerHTML = `<p class="text-muted">No hay eventos cargados todavía.</p>`;
+    return;
+  }
+
+  cont.innerHTML = calendario.map((e, i) => {
+    const positivo = e.alzaPromedio >= 0;
+    const bars = STATE.sucursales.map(suc => {
+      const v = e.porSucursal[suc];
+      if (typeof v !== 'number' || isNaN(v)) return '';
+      const ancho = Math.min(100, Math.abs(v));
+      const dir = v >= 0 ? 'up' : 'down';
+      return `
+        <div class="evento-bar-row">
+          <span class="evento-bar-suc">${sucDot(suc)}${suc}</span>
+          <div class="evento-bar-track">
+            <div class="evento-bar-fill ${dir}" style="width:${ancho}%"></div>
+          </div>
+          <span class="evento-bar-val ${dir}">${v >= 0 ? '+' : ''}${round1(v)}%</span>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="evento-card" data-evento="${i}" style="animation-delay:${i * 0.03}s">
+        <div class="evento-card-top">
+          <div>
+            <div class="evento-card-fecha">${eventCountdownLabel(e.diasFaltantes)} · ${e.proximaFecha.toLocaleDateString('es-PA', { day: 'numeric', month: 'long' })}</div>
+            <div class="evento-card-nombre">${e.nombre}</div>
+            <div class="evento-card-categoria">${e.categoria}</div>
+          </div>
+          <div class="evento-card-alza ${positivo ? 'up' : 'down'}">${positivo ? '+' : ''}${round1(e.alzaPromedio)}%
+            <span class="evento-card-alza-label">alza promedio</span>
+          </div>
+        </div>
+        <div class="evento-card-detalle">${bars}</div>
+      </div>
+    `;
+  }).join('');
+
+  cont.querySelectorAll('.evento-card').forEach(card => {
+    card.addEventListener('click', () => card.classList.toggle('open'));
+  });
 }
 
 /* ---------------- Método de proyección / filtro de sucursal ---------------- */

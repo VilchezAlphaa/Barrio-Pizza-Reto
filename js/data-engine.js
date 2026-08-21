@@ -10,7 +10,7 @@ const DataEngine = (function () {
 
   // ---------- Carga y parseo ----------
 
-  async function loadCSV(path) {
+  async function loadCSV(path, opts) {
     const filename = path.split('/').pop();
     let text;
     if (typeof window !== 'undefined' && window.EMBEDDED_CSV && window.EMBEDDED_CSV[filename]) {
@@ -20,23 +20,27 @@ const DataEngine = (function () {
       const res = await fetch(path);
       text = await res.text();
     }
-    const parsed = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: true });
+    const parsed = Papa.parse(text, Object.assign({ header: true, skipEmptyLines: true, dynamicTyping: true }, opts));
     return parsed.data;
   }
 
   async function loadAll() {
-    const [ingredientesRaw, consumoRaw, inventarioRaw, ordenRaw] = await Promise.all([
+    const [ingredientesRaw, consumoRaw, inventarioRaw, ordenRaw, eventosRaw, ventasRefRaw] = await Promise.all([
       loadCSV('data/ingredientes.csv'),
       loadCSV('data/consumo_historico.csv'),
       loadCSV('data/inventario_actual.csv'),
       loadCSV('data/orden_compra_semana.csv'),
+      // Estos dos llevan una primera línea "# DATOS SIMULADOS..." — comments:'#' hace
+      // que Papa.parse la ignore en vez de tomarla como fila de encabezados.
+      loadCSV('data/eventos_historicos.csv', { comments: '#' }),
+      loadCSV('data/ventas_semanales_referencia.csv', { comments: '#' }),
     ]);
-    return build(ingredientesRaw, consumoRaw, inventarioRaw, ordenRaw);
+    return build(ingredientesRaw, consumoRaw, inventarioRaw, ordenRaw, eventosRaw, ventasRefRaw);
   }
 
   // ---------- Construcción de estructuras indexadas ----------
 
-  function build(ingredientesRaw, consumoRaw, inventarioRaw, ordenRaw) {
+  function build(ingredientesRaw, consumoRaw, inventarioRaw, ordenRaw, eventosRaw, ventasRefRaw) {
     const catalogo = {};
     ingredientesRaw.forEach(r => {
       if (!r.ingrediente_id) return;
@@ -82,7 +86,100 @@ const DataEngine = (function () {
       consumoPorSucIng,
       inventario,
       ordenes, // esta copia se muta cuando el usuario edita cantidades en vivo
+      eventos: buildEventos(eventosRaw || []),
+      ventasReferencia: buildVentasReferencia(ventasRefRaw || []),
     };
+  }
+
+  // ---------- Eventos (data sintética de referencia — ver notas en los CSV) ----------
+  //
+  // Agrupa las filas de eventos_historicos.csv (una por sucursal) en un catálogo de
+  // eventos único, con el alza histórica observada por sucursal y el promedio general.
+  // Esto es lo que usa el módulo "Eventos" para armar el calendario y para sugerir
+  // un % cuando la gerente crea un evento futuro parecido, en vez de que alguien
+  // invente el número a ojo.
+  function buildEventos(eventosRaw) {
+    const porNombre = {};
+    eventosRaw.forEach(r => {
+      if (!r || !r.nombre_evento || !r.fecha) return;
+      const key = r.nombre_evento;
+      porNombre[key] = porNombre[key] || {
+        nombre: key, categoria: r.categoria, fecha: r.fecha, porSucursal: {}, alzas: [],
+      };
+      const alza = Number(r.alza_pct_observada);
+      porNombre[key].porSucursal[r.sucursal] = alza;
+      if (!isNaN(alza)) porNombre[key].alzas.push(alza);
+    });
+
+    return Object.values(porNombre).map(e => {
+      const ordenadas = Object.entries(e.porSucursal).sort((a, b) => b[1] - a[1]);
+      const masAfectada = ordenadas[0] || null;
+      const menosAfectada = ordenadas[ordenadas.length - 1] || null;
+      return {
+        nombre: e.nombre,
+        categoria: e.categoria,
+        fecha: e.fecha, // fecha de referencia (año en que se simuló, se usa solo el mes/día)
+        porSucursal: e.porSucursal,
+        alzaPromedio: mean(e.alzas),
+        sucursalMasAfectada: masAfectada ? masAfectada[0] : null,
+        alzaMasAfectada: masAfectada ? masAfectada[1] : null,
+        sucursalMenosAfectada: menosAfectada ? menosAfectada[0] : null,
+        alzaMenosAfectada: menosAfectada ? menosAfectada[1] : null,
+      };
+    }).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }
+
+  function buildVentasReferencia(ventasRefRaw) {
+    const porSucursal = {};
+    ventasRefRaw.forEach(r => {
+      if (!r || !r.sucursal) return;
+      porSucursal[r.sucursal] = porSucursal[r.sucursal] || [];
+      porSucursal[r.sucursal].push({
+        semana: r.semana_num, fecha: r.fecha_lunes, indice: Number(r.indice_ventas), evento: r.evento || null,
+      });
+    });
+    return porSucursal;
+  }
+
+  // ---------- Calendario de eventos: próxima ocurrencia y cuenta regresiva ----------
+  //
+  // Los eventos se guardaron con una fecha de referencia (el año en que se simuló la
+  // data), pero son fechas que se repiten cada año (San Valentín, Independencia...).
+  // Estas funciones toman el mes/día de esa fecha y calculan cuándo cae la PRÓXIMA
+  // ocurrencia a partir de "hoy" (o de la fecha que se le pase), para poder avisar
+  // con anticipación sin importar en qué año se esté ejecutando el dashboard.
+
+  function proximaOcurrencia(fechaRef, desde) {
+    const partes = String(fechaRef).split('-').map(Number);
+    const mes = partes[1], dia = partes[2];
+    const hoy = desde ? new Date(desde) : new Date();
+    const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    let candidata = new Date(hoy0.getFullYear(), mes - 1, dia);
+    if (candidata < hoy0) candidata = new Date(hoy0.getFullYear() + 1, mes - 1, dia);
+    return candidata;
+  }
+
+  function diasHasta(fecha, desde) {
+    const hoy = desde ? new Date(desde) : new Date();
+    const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const f0 = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    return Math.round((f0 - hoy0) / 86400000);
+  }
+
+  // Devuelve el catálogo completo de eventos, cada uno con su próxima fecha real y
+  // los días que faltan, ordenado del más próximo al más lejano (para el calendario).
+  function calendarioEventos(state, desde) {
+    return (state.eventos || []).map(e => {
+      const proximaFecha = proximaOcurrencia(e.fecha, desde);
+      return Object.assign({}, e, { proximaFecha, diasFaltantes: diasHasta(proximaFecha, desde) });
+    }).sort((a, b) => a.diasFaltantes - b.diasFaltantes);
+  }
+
+  // El evento (si hay alguno) que cae dentro de los próximos `diasVentana` días —
+  // es lo que dispara el banner de aviso en el módulo Resumen.
+  function eventoProximo(state, diasVentana, desde) {
+    const cal = calendarioEventos(state, desde);
+    return cal.find(e => e.diasFaltantes >= 0 && e.diasFaltantes <= diasVentana) || null;
   }
 
   // ---------- Estadística: proyección ----------
@@ -404,6 +501,14 @@ const DataEngine = (function () {
         ratio_pedido_vs_proyeccion: round2(a.ratio),
         promedio_resto_de_sucursales: round2(a.promedioResto),
       })),
+      // Calendario de eventos (data sintética de referencia, ver módulo "Eventos"):
+      // permite responder preguntas como "¿cuándo es el próximo evento?" o "¿cuánto
+      // sube históricamente Halloween en Marbella?".
+      proximos_eventos: calendarioEventos(state).slice(0, 6).map(e => ({
+        evento: e.nombre, categoria: e.categoria, dias_faltantes: e.diasFaltantes,
+        alza_historica_promedio_pct: round2(e.alzaPromedio),
+        sucursal_mas_afectada: e.sucursalMasAfectada, alza_sucursal_mas_afectada_pct: round2(e.alzaMasAfectada),
+      })),
     };
   }
 
@@ -449,5 +554,6 @@ const DataEngine = (function () {
     alertasOlvido, anomaliasEntreSucursales, pedidoCorregidoPorProveedor,
     resumenParaChat, seriesFor, WEEK_ORDER, accionSugerida, accionSugeridaOlvido,
     descripcionMetodo,
+    calendarioEventos, eventoProximo, proximaOcurrencia, diasHasta,
   };
 })();
